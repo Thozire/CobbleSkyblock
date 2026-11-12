@@ -25,6 +25,7 @@ public class CobbleIslands implements ModInitializer {
         ServerLifecycleEvents.SERVER_STARTED.register(server -> {
             manager = new IslandManager(server, IslandConfig.load());
             if (!manager.data().spawnBuilt) SpawnBuilder.build(manager, false);
+            ResourcePackSender.init(manager.config());
             int n = manager.data().islands.size();
             LOG.info("CobbleIslands prêt : {} île(s), dimension {}", n,
                     manager.islandsLevel() != null ? "chargée" : "ABSENTE");
@@ -34,10 +35,11 @@ public class CobbleIslands implements ModInitializer {
         ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> {
             ServerPlayer p = handler.getPlayer();
             if (manager == null) return;
+            ResourcePackSender.send(p, manager.config());
             Island is = manager.islandOf(p.getUUID());
             if (is == null) {
                 p.sendSystemMessage(Msg.info("Bienvenue sur CobbleSkyblock ! Tu n'as pas encore d'île. ")
-                        .append(Msg.button("Créer mon île", "/ile creer", ChatFormatting.GREEN)));
+                        .append(Msg.button("Ouvrir le menu", "/ile", ChatFormatting.GREEN)));
             } else {
                 // garde le pseudo à jour si le joueur en a changé
                 is.members.put(p.getUUID(), p.getGameProfile().getName());

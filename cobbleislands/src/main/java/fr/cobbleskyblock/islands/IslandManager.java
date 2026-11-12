@@ -114,6 +114,13 @@ public class IslandManager {
         p.teleportTo(ow, s.getX() + 0.5, s.getY(), s.getZ() + 0.5, p.getYRot(), p.getXRot());
     }
 
+    /** Téléporte un visiteur sur une île. */
+    public void visit(ServerPlayer p, Island is) {
+        BlockPos h = is.home;
+        p.teleportTo(islandsLevel(), h.getX() + 0.5, h.getY(), h.getZ() + 0.5, p.getYRot(), p.getXRot());
+        p.sendSystemMessage(Msg.ok(is.isMember(p.getUUID()) ? "Retour sur ton île." : "Bienvenue sur l'île de " + is.ownerName() + " !"));
+    }
+
     public void join(ServerPlayer p, Island is) {
         is.members.put(p.getUUID(), p.getGameProfile().getName());
         data().byPlayer.put(p.getUUID(), is);

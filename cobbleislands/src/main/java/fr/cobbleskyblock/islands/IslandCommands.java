@@ -43,7 +43,9 @@ public final class IslandCommands {
                 .executes(IslandCommands::quick)
                 .then(literal("aide").executes(IslandCommands::help))
                 .then(literal("creer").executes(IslandCommands::create))
+                .then(literal("go").executes(IslandCommands::home))
                 .then(literal("home").executes(IslandCommands::home))
+                .then(literal("menu").executes(IslandCommands::quick))
                 .then(literal("sethome").executes(IslandCommands::setHome))
                 .then(literal("info").executes(IslandCommands::info))
                 .then(literal("inviter").then(argument("joueur", EntityArgument.player()).executes(IslandCommands::invite)))
@@ -86,17 +88,10 @@ public final class IslandCommands {
         }));
     }
 
-    /** /ile ou /is sans argument : va sur son île, ou propose d'en créer une. */
+    /** /ile ou /is sans argument : ouvre le menu des îles. */
     private static int quick(CommandContext<CommandSourceStack> c) throws CommandSyntaxException {
-        ServerPlayer p = c.getSource().getPlayerOrException();
-        Island is = mgr().islandOf(p.getUUID());
-        if (is == null) {
-            help(c);
-            c.getSource().sendSystemMessage(Msg.info("Tu n'as pas encore d'île. ").append(Msg.button("Créer mon île", "/ile creer", ChatFormatting.GREEN)));
-            return 1;
-        }
-        mgr().teleportHome(p, is);
-        return ok(c, () -> Msg.ok("Retour sur ton île. ").append(Msg.button("Aide", "/ile aide", ChatFormatting.AQUA)));
+        IslandMenus.main(c.getSource().getPlayerOrException());
+        return 1;
     }
 
     private static int help(CommandContext<CommandSourceStack> c) {
@@ -104,7 +99,7 @@ public final class IslandCommands {
                 .append(Component.literal("Îles CobbleSkyblock").withStyle(ChatFormatting.LIGHT_PURPLE, ChatFormatting.BOLD))
                 .append(Component.literal(" ━━━━━━").withStyle(ChatFormatting.DARK_PURPLE));
         String[][] lines = {
-                {"/ile", "aller sur ton île (ou /is)"}, {"/ile creer", "créer ton île"},
+                {"/ile", "ouvrir le menu des îles (ou /is)"}, {"/ile go", "aller sur ton île"}, {"/ile creer", "créer ton île"},
                 {"/ile info", "infos sur ton île et ton équipe"}, {"/ile inviter <joueur>", "inviter un joueur"},
                 {"/ile accepter", "rejoindre l'île qui t'a invité"}, {"/ile exclure <pseudo>", "retirer un membre (chef)"},
                 {"/ile quitter", "quitter l'île d'un autre"}, {"/ile visiter <joueur>", "visiter une île"},
@@ -258,9 +253,8 @@ public final class IslandCommands {
         Island is = mgr().islandOf(t.getUUID());
         if (is == null) return fail(c, t.getGameProfile().getName() + " n'a pas d'île.");
         if (!is.open && !is.isMember(p.getUUID()) && !p.hasPermissions(2)) return fail(c, "Cette île est fermée aux visites.");
-        net.minecraft.core.BlockPos h = is.home;
-        p.teleportTo(mgr().islandsLevel(), h.getX() + 0.5, h.getY(), h.getZ() + 0.5, p.getYRot(), p.getXRot());
-        return ok(c, () -> Msg.ok("Bienvenue sur l'île de " + is.ownerName() + " !"));
+        mgr().visit(p, is);
+        return 1;
     }
 
     private static int setOpen(CommandContext<CommandSourceStack> c, boolean open) throws CommandSyntaxException {

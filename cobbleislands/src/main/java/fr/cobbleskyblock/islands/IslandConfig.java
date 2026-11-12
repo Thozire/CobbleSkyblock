@@ -32,6 +32,10 @@ public class IslandConfig {
     public int hauteurSpawn = 100;
     /** Rayon protégé autour du spawn (seuls les opérateurs peuvent y construire). */
     public int protectionSpawn = 48;
+    /** Resource pack envoyé aux joueurs à la connexion (menus, machine à fusion). Vide = désactivé. */
+    public String resourcePack = "https://raw.githubusercontent.com/Thozire/CobbleSkyblock/main/resourcepacks/FusionMachinePack.zip";
+    /** Le pack est-il obligatoire pour jouer ? */
+    public boolean resourcePackObligatoire = true;
     /** Durée de validité d'une invitation (secondes). */
     public int dureeInvitation = 300;
 
