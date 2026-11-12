@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>CobbleSkyblock Launcher</title>
+<link rel="icon" href="favicon.png">
+<style>
+  :root{--bg:#14121c;--panel:#1d1a29;--panel2:#262236;--line:#332d48;--txt:#ece8f6;--mut:#a39cb8;
+        --acc:#d65cf0;--acc2:#5ad7ff;--ok:#5ee0a0;--bad:#ff6b7a}
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{background:var(--bg);color:var(--txt);font:14px/1.45 "Segoe UI",system-ui,sans-serif;overflow:hidden;
+       display:grid;grid-template-rows:auto 1fr auto;user-select:none}
+  header{display:flex;align-items:center;gap:14px;padding:14px 22px;border-bottom:1px solid var(--line);
+         background:linear-gradient(90deg,#1b1727,#221b33)}
+  header img{width:44px;height:44px;image-rendering:pixelated}
+  header h1{font-size:18px;font-weight:700;letter-spacing:.3px}
+  header h1 span{color:var(--acc)}
+  header .sub{color:var(--mut);font-size:12px}
+  header .sp{flex:1}
+  .btn{border:1px solid var(--line);background:var(--panel2);color:var(--txt);border-radius:8px;padding:8px 14px;
+       font:inherit;cursor:pointer;transition:.15s}
+  .btn:hover{border-color:var(--acc)}
+  .btn:disabled{opacity:.45;cursor:default}
+  main{display:grid;grid-template-columns:1fr 330px;gap:18px;padding:18px 22px;min-height:0}
+  .hero{position:relative;border-radius:14px;overflow:hidden;border:1px solid var(--line);
+        background:radial-gradient(circle at 70% 40%,#3a2257 0,#1b1727 60%);display:flex;align-items:flex-end;min-height:0}
+  .hero img{position:absolute;right:4%;top:50%;transform:translateY(-55%);height:82%;image-rendering:pixelated;
+            filter:drop-shadow(0 18px 30px #000a)}
+  .hero .txt{position:relative;padding:24px;max-width:60%}
+  .hero h2{font-size:30px;line-height:1.1;margin-bottom:8px}
+  .hero p{color:var(--mut)}
+  .side{display:flex;flex-direction:column;gap:14px;min-height:0}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px}
+  .card h3{font-size:12px;text-transform:uppercase;letter-spacing:1px;color:var(--mut);margin-bottom:10px}
+  .acc{display:flex;align-items:center;gap:12px}
+  .acc img{width:44px;height:44px;border-radius:8px;background:var(--panel2);image-rendering:pixelated}
+  .acc .n{font-weight:600;font-size:16px}
+  .acc .s{color:var(--mut);font-size:12px}
+  .news{flex:1;overflow:auto}
+  .news .it{padding:8px 0;border-bottom:1px solid var(--line)}
+  .news .it:last-child{border:0}
+  .news b{display:block}
+  .news small{color:var(--mut)}
+  footer{display:flex;align-items:center;gap:18px;padding:14px 22px;border-top:1px solid var(--line);background:#181522}
+  .prog{flex:1}
+  .prog .lbl{display:flex;justify-content:space-between;color:var(--mut);font-size:12px;margin-bottom:6px}
+  .bar{height:8px;border-radius:6px;background:var(--panel2);overflow:hidden}
+  .bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--acc2),var(--acc));transition:width .25s}
+  .play{font-size:20px;font-weight:800;letter-spacing:2px;padding:14px 56px;border:0;border-radius:12px;color:#fff;
+        background:linear-gradient(135deg,#b93fe0,#6a4cff);cursor:pointer;box-shadow:0 6px 22px #a440e055;transition:.15s}
+  .play:hover{filter:brightness(1.12);transform:translateY(-1px)}
+  .play:disabled{filter:grayscale(.7) brightness(.7);cursor:default;transform:none}
+  .err{display:none;margin:0 22px;padding:10px 14px;border-radius:10px;background:#3a1720;border:1px solid #6b2333;
+       color:#ffd9de;align-items:center;gap:12px}
+  .err.on{display:flex}
+  .err span{flex:1}
+  .notice{display:none;padding:8px 22px;background:#2b2140;color:#e6d4ff;font-size:13px}
+  .notice.on{display:block}
+  .notice a{color:var(--acc2)}
+  dialog{margin:auto;background:var(--panel);color:var(--txt);border:1px solid var(--line);border-radius:14px;padding:20px;width:440px}
+  dialog::backdrop{background:#0009}
+  dialog h3{margin-bottom:14px}
+  dialog label{display:block;color:var(--mut);margin:12px 0 6px}
+  dialog input[type=range]{width:100%;accent-color:var(--acc)}
+  dialog .row{display:flex;gap:8px;margin-top:16px;flex-wrap:wrap}
+  pre{background:#0f0d16;border:1px solid var(--line);border-radius:8px;padding:10px;height:220px;overflow:auto;
+      font:11px/1.4 Consolas,monospace;color:#cfc8e2;white-space:pre-wrap;user-select:text}
+  .wrap{display:flex;flex-direction:column;min-height:0}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <img src="logo.png" alt="">
+    <div>
+      <h1>Cobble<span>Skyblock</span></h1>
+      <div class="sub" id="srv">Serveur : …</div>
+    </div>
+    <div class="sp"></div>
+    <button class="btn" id="bSettings">⚙ Réglages</button>
+  </header>
+  <div class="notice" id="notice"></div>
+  <div class="notice" id="update">Une nouvelle version du launcher est disponible : <a href="#" id="updLink">la télécharger</a></div>
+</div>
+
+<main>
+  <section class="hero">
+    <img src="logo.png" alt="">
+    <div class="txt">
+      <h2>Bienvenue sur<br>CobbleSkyblock</h2>
+      <p>Cobblemon, une île, et une machine à fusion. Les mods se mettent à jour tout seuls à chaque lancement.</p>
+    </div>
+  </section>
+  <aside class="side">
+    <div class="card">
+      <h3>Compte</h3>
+      <div class="acc" id="accBox">
+        <img id="head" src="favicon.png" alt="">
+        <div style="flex:1"><div class="n" id="accName">Non connecté</div><div class="s" id="accSub">Compte Microsoft requis</div></div>
+      </div>
+      <div class="row" style="display:flex;gap:8px;margin-top:12px">
+        <button class="btn" id="bLogin" style="flex:1">Se connecter avec Microsoft</button>
+        <button class="btn" id="bLogout" style="display:none">Se déconnecter</button>
+      </div>
+    </div>
+    <div class="card news">
+      <h3>Actus</h3>
+      <div id="news"><small>Chargement…</small></div>
+    </div>
+  </aside>
+</main>
+
+<div>
+  <div class="err" id="err"><span id="errTxt"></span><button class="btn" id="bDismiss">OK</button></div>
+  <footer>
+    <div class="prog">
+      <div class="lbl"><span id="st">Prêt</span><span id="pc"></span></div>
+      <div class="bar"><i id="bar"></i></div>
+    </div>
+    <button class="play" id="bPlay">JOUER</button>
+  </footer>
+</div>
+
+<dialog id="dlg">
+  <h3>Réglages</h3>
+  <label>Mémoire allouée au jeu : <b id="ramVal"></b></label>
+  <input type="range" id="ram" min="2048" max="12288" step="512">
+  <div class="row">
+    <button class="btn" id="bFolder">📁 Ouvrir le dossier du jeu</button>
+    <button class="btn" id="bRepair">🔧 Vérifier et réparer les fichiers</button>
+  </div>
+  <label>Journal</label>
+  <pre id="log"></pre>
+  <div class="row" style="justify-content:space-between;align-items:center">
+    <small style="color:var(--mut)">Version <span id="ver"></span></small>
+    <button class="btn" id="bClose">Fermer</button>
+  </div>
+</dialog>
+
+<script>
+const $ = id => document.getElementById(id);
+let S = {};
+const api = (p, opt) => fetch(p, opt).then(r => r.json());
+
+function render(s) {
+  S = s;
+  const r = s.remote || {};
+  $('srv').textContent = 'Serveur : ' + (r.serverName || r.server || '…');
+  $('notice').textContent = r.message || '';
+  $('notice').classList.toggle('on', !!r.message);
+  $('update').classList.toggle('on', !!s.update);
+  $('ver').textContent = s.version;
+  if (s.account) {
+    $('accName').textContent = s.account.name;
+    $('accSub').textContent = 'Compte Minecraft vérifié';
+    $('head').src = 'https://mc-heads.net/avatar/' + s.account.uuid + '/64';
+    $('bLogin').style.display = 'none'; $('bLogout').style.display = '';
+  } else {
+    $('accName').textContent = 'Non connecté';
+    $('accSub').textContent = 'Compte Microsoft requis';
+    $('head').src = 'favicon.png';
+    $('bLogin').style.display = ''; $('bLogout').style.display = 'none';
+  }
+  const news = r.news || [];
+  $('news').innerHTML = news.length ? '' : '<small>Pas d\'actu pour le moment.</small>';
+  for (const n of news) {
+    const d = document.createElement('div'); d.className = 'it';
+    const b = document.createElement('b'); b.textContent = n.title;
+    const t = document.createElement('div'); t.textContent = n.text;
+    const m = document.createElement('small'); m.textContent = n.date || '';
+    d.append(b, t, m); $('news').append(d);
+  }
+  $('st').textContent = s.status || (s.gameRunning ? 'Minecraft est lancé' : (s.account ? 'Prêt' : 'Connecte-toi pour jouer'));
+  $('pc').textContent = s.busy && s.progress ? Math.round(s.progress * 100) + ' %' : '';
+  $('bar').style.width = (s.busy ? s.progress * 100 : (s.gameRunning ? 100 : 0)) + '%';
+  $('bPlay').disabled = s.busy || s.gameRunning || !s.account;
+  $('bPlay').textContent = s.busy ? '…' : (s.gameRunning ? 'EN JEU' : 'JOUER');
+  $('bLogin').disabled = $('bLogout').disabled = s.busy;
+  $('bRepair').disabled = s.busy || s.gameRunning || !s.account;
+  $('errTxt').textContent = s.error || '';
+  $('err').classList.toggle('on', !!s.error);
+  if (!$('dlg').open) { $('ram').value = s.ram; }
+  $('ramVal').textContent = ($('ram').value / 1024).toFixed(1) + ' Go';
+  const lg = $('log'), atEnd = lg.scrollTop + lg.clientHeight >= lg.scrollHeight - 5;
+  lg.textContent = (s.logs || []).join('\n');
+  if (atEnd) lg.scrollTop = lg.scrollHeight;
+}
+
+async function tick() { try { render(await api('/api/state')); } catch (e) {} }
+setInterval(tick, 700); tick();
+
+$('bLogin').onclick = async () => { const r = await api('/api/login', {method: 'POST'}); location.href = r.url; };
+$('bLogout').onclick = async () => render(await api('/api/logout', {method: 'POST'}));
+$('bPlay').onclick = async () => render(await api('/api/play', {method: 'POST'}));
+$('bRepair').onclick = async () => { $('dlg').close(); render(await api('/api/play?repair=1', {method: 'POST'})); };
+$('bDismiss').onclick = async () => render(await api('/api/dismiss', {method: 'POST'}));
+$('bSettings').onclick = () => $('dlg').showModal();
+$('bClose').onclick = () => $('dlg').close();
+$('bFolder').onclick = () => api('/api/folder', {method: 'POST'});
+$('ram').oninput = () => $('ramVal').textContent = ($('ram').value / 1024).toFixed(1) + ' Go';
+$('ram').onchange = async () => render(await api('/api/settings', {method: 'POST', body: JSON.stringify({ram: +$('ram').value})}));
+$('updLink').onclick = e => { e.preventDefault(); window.open(S.releases, '_blank'); };
+document.addEventListener('contextmenu', e => { if (!e.target.closest('pre')) e.preventDefault(); });
+</script>
+</body>
+</html>
