@@ -14,7 +14,7 @@ const (
 	RepoRaw       = "https://raw.githubusercontent.com/Thozire/CobbleSkyblock/main"
 	PackURL       = RepoRaw + "/pack.toml"
 	RemoteConfURL = RepoRaw + "/launcher.json"
-	ReleasesURL   = "https://github.com/Thozire/CobbleSkyblock/releases/latest"
+	ReleasesURL   = "https://github.com/Thozire/CobbleSkyblock/raw/main/launcher/CobbleSkyblock-Launcher.exe"
 
 	MCVersion     = "1.21.1"
 	FabricLoader  = "0.20.1"
