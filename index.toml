@@ -13,19 +13,3 @@ metafile = true
 [[files]]
 file = "resourcepacks/FusionMachinePack.zip"
 hash = "7182ed7e88f0e56caf9de2d06a1ff36b88642ed4f43370e3a95c11ddefc2bb68"
-
-[[files]]
-file = "world/datapacks/skyblock_ile/data/minecraft/tags/function/load.json"
-hash = "f03f30ab9d3c81732c6845aa927de97c49c1bbbb0dbc63bc7173c401e01661db"
-
-[[files]]
-file = "world/datapacks/skyblock_ile/data/skyblock/function/ile.mcfunction"
-hash = "3975f5f6c8e45060deb73146482e9b20d2b1edbf65ca2d0c3f674cab21fa8382"
-
-[[files]]
-file = "world/datapacks/skyblock_ile/data/skyblock/function/load.mcfunction"
-hash = "471ad3466021d2ad4601b8aed13525ffcd78825cde084d652e48a3e64daf2c6c"
-
-[[files]]
-file = "world/datapacks/skyblock_ile/pack.mcmeta"
-hash = "c455a37096be3de04206d1f7c40f2216781317fc83b7bfa1ffa61b0e93b5ba28"
