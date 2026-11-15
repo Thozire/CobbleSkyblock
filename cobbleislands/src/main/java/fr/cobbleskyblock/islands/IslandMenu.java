@@ -1,9 +1,6 @@
 package fr.cobbleskyblock.islands;
 
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.chat.MutableComponent;
-import net.minecraft.network.chat.Style;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
@@ -23,21 +20,15 @@ import java.util.function.Consumer;
 /**
  * Menu « coffre » 6 rangées dont les objets sont des boutons.
  * <ul>
- * <li>Le fond est un glyphe de la police du resource pack, placé dans le titre.</li>
+ * <li>Le fond (pages dessinées) est fait de glyphes de la police du resource pack, placés dans le titre.</li>
  * <li>Les 36 cases du bas (l'inventaire du joueur) pointent vers un inventaire vide :
  * le joueur ne voit pas ses objets dans le menu, et ses vrais objets ne sont jamais touchés.
  * À la fermeture, on renvoie son vrai inventaire à son client.</li>
  * </ul>
  */
 public class IslandMenu extends AbstractContainerMenu {
-    private static final ResourceLocation GUI_FONT = ResourceLocation.fromNamespaceAndPath("cobbleislands", "gui");
-
-    /** Fonds disponibles (un glyphe par page, voir tools/medieval_gui.py). */
-    public enum Page {
-        MAIN(''), LIST(''), BUILDING(''), DOMAIN(''), CONFIRM(''), START('');
-        final char glyph;
-        Page(char g) { glyph = g; }
-    }
+    /** Pages du menu. Seule la page principale a déjà son fond dessiné (voir RoyalGui). */
+    public enum Page { MAIN, LIST, BUILDING, DOMAIN, CONFIRM, START }
 
     private final SimpleContainer buttons = new SimpleContainer(54);
     private final Map<Integer, Consumer<ServerPlayer>> actions = new HashMap<>();
@@ -86,18 +77,20 @@ public class IslandMenu extends AbstractContainerMenu {
         if (player instanceof ServerPlayer sp) sp.inventoryMenu.sendAllDataToRemote();
     }
 
-    /** Titre : fond de la page + texte (police normale). */
+    /** Titre simple (pages sans fond dessiné) : texte vanilla sur le coffre gris. */
     public static Component title(Page page, String text) {
-        MutableComponent bg = Component.literal("" + page.glyph + "").withStyle(Style.EMPTY.withFont(GUI_FONT).withColor(0xFFFFFF));
-        MutableComponent t = Component.literal(text).withStyle(Style.EMPTY.withFont(Style.DEFAULT_FONT).withColor(0xFFEEC0).withBold(true));
-        return Component.empty().append(bg).append(t);
+        return Component.literal(text);
     }
 
     public static void open(ServerPlayer p, Page page, String title, Consumer<IslandMenu> fill) {
+        open(p, title(page, title), fill);
+    }
+
+    public static void open(ServerPlayer p, Component title, Consumer<IslandMenu> fill) {
         p.openMenu(new SimpleMenuProvider((id, inv, pl) -> {
             IslandMenu m = new IslandMenu(id);
             fill.accept(m);
             return m;
-        }, title(page, title)));
+        }, title));
     }
 }

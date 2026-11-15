@@ -1,2 +1,3 @@
 cobbleislands/build/
 cobbleislands/.gradle/
+tools/__pycache__/

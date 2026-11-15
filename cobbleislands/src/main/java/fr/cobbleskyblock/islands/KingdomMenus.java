@@ -106,25 +106,35 @@ public final class KingdomMenus {
 
     // ---------- page principale ----------
 
+    static final int I_BLANK = 7299;   // objet transparent : seulement une infobulle sur le dessin
+
+    /** Remplit une zone de cases avec un bouton invisible (le bouton est dessiné dans le fond). */
+    private static void zone(IslandMenu m, int row0, int row1, int col0, int col1, ItemStack tip, Consumer<ServerPlayer> action) {
+        for (int r = row0; r <= row1; r++)
+            for (int c = col0; c <= col1; c++) m.set(r * 9 + c, tip.copy(), action);
+    }
+
     public static void main(ServerPlayer p) {
         Island is = mgr().islandOf(p.getUUID());
         if (is == null) { start(p); return; }
-        IslandMenu.open(p, Page.MAIN, is.name, m -> {
-            m.set(0, button(I_HELP, "Aide", CREAM, "§b/royaume §7: ce menu", "§b/royaume go §7: aller sur ton domaine",
-                    "§b/royaume vendre §7: tout vendre", "§b/capitale §7: la capitale", "§b/royaume inviter <joueur>"));
-            m.set(4, infoCard(is));
-            closeBtn(m, 8);
-            m.set(19, glow(button(I_DOMAIN, "Mon domaine", GREEN, "§7Te téléporte sur ton domaine.", "", "§8Raccourci : §e/royaume go")),
+        int total = mgr().ranking().size();
+        Component title = RoyalGui.mainTitle(
+                is.ownerName(),
+                Market.fmt(is.money) + " écus",
+                "+" + Market.fmt(mgr().incomePerMinute(is)) + " / min",
+                "#" + mgr().rankOf(is) + " sur " + total,
+                is.members.size() + " / " + mgr().maxMembers(is),
+                "Niveau " + is.sizeLevel);
+        IslandMenu.open(p, title, m -> {
+            zone(m, 0, 1, 0, 8, button(I_BLANK, "Aller à mon royaume", GREEN, "§7Te téléporte sur ton domaine.", "", "§8Raccourci : §e/royaume go"),
                     pl -> { pl.closeContainer(); cmd(pl, "royaume go"); });
-            m.set(21, button(I_BUILD, "Bâtiments", CREAM, "§7Construis et gère tes", "§7bâtiments producteurs.", "",
+            zone(m, 2, 3, 0, 3, button(I_BLANK, "Bâtiments", CREAM, "§7Construis et gère tes", "§7bâtiments producteurs.", "",
                     "§f" + is.buildings.size() + " §7bâtiment(s)"), KingdomMenus::buildings);
-            m.set(23, button(I_MARKET, "Marché", GOLD, "§7Vends ta production", "§7contre des écus."), KingdomMenus::market);
-            m.set(25, button(I_TEAM, "Équipe", BLUE, "§7Ta cour : membres", "§7et invitations.", "",
+            zone(m, 2, 3, 5, 8, button(I_BLANK, "Améliorer", GREEN, "§7Agrandis ton domaine", "§7et ta cour."), KingdomMenus::domain);
+            zone(m, 4, 5, 0, 3, button(I_BLANK, "Membres", BLUE, "§7Ta cour : membres", "§7et invitations.", "",
                     "§f" + is.members.size() + "/" + mgr().maxMembers(is) + " §7membres"), KingdomMenus::team);
-            m.set(37, button(I_UPGRADE, "Améliorer", GREEN, "§7Agrandis ton domaine", "§7et ton équipe."), KingdomMenus::domain);
-            m.set(39, button(I_RANK, "Classement", GOLD, "§7Les royaumes les plus riches.", "", "§7Ton rang : §b#" + mgr().rankOf(is)), pl -> ranking(pl, 0));
-            m.set(41, button(I_CAPITAL, "Capitale", RED, "§7Retourner à la capitale."), pl -> { pl.closeContainer(); cmd(pl, "capitale"); });
-            m.set(43, button(I_VISIT, "Visiter", BLUE, "§7Découvre les royaumes", "§7des autres joueurs."), pl -> visit(pl, 0));
+            zone(m, 4, 5, 5, 8, button(I_BLANK, "Aller à la capitale", RED, "§7Marché, classement et", "§7autres royaumes.", "",
+                    "§8Raccourci : §e/capitale"), pl -> { pl.closeContainer(); cmd(pl, "capitale"); });
         });
     }
 
