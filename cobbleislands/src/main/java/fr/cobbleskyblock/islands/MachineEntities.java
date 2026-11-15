@@ -75,7 +75,29 @@ final class MachineEntities {
             UUID u = display(level, b, part.cmd(), rest, part.bright());
             if (u != null) b.entities.add(u);
         }
+        clickZone(level, b);
         b.model = MachineModels.VERSION;
+    }
+
+    /**
+     * Zone de clic invisible qui enveloppe les barrières : le viseur la touche avant elles, donc le
+     * contour de sélection des blocs ne s'affiche plus par-dessus le modèle. Retrouvée par son étiquette.
+     */
+    private static void clickZone(ServerLevel level, Building b) {
+        CompoundTag t = new CompoundTag();
+        t.putString("id", "minecraft:interaction");
+        t.putFloat("width", 2 * RADIUS + 1.08f);
+        t.putFloat("height", HEIGHT + 0.06f);
+        t.putBoolean("response", true);
+        ListTag tags = new ListTag();
+        tags.add(StringTag.valueOf(TAG));
+        t.put("Tags", tags);
+        double x = b.pos.getX() + 0.5, y = b.pos.getY() - 0.02, z = b.pos.getZ() + 0.5;
+        Entity e = EntityType.loadEntityRecursive(t, level, en -> {
+            en.moveTo(x, y, z, 0f, 0f);
+            return en;
+        });
+        if (e == null || !level.addFreshEntity(e)) CobbleIslands.LOG.warn("Impossible de créer la zone de clic du bâtiment {}", b.type.id);
     }
 
     private static UUID display(ServerLevel level, Building b, int cmd, CompoundTag transformation, boolean bright) {

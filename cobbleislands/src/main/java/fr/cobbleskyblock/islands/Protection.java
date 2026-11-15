@@ -109,6 +109,20 @@ public final class Protection {
                 m.machineBroken(sl, pos);
         });
         UseEntityCallback.EVENT.register((player, level, hand, entity, hit) -> {
+            if (entity.getTags().contains(MachineEntities.TAG)) {
+                // clic sur la zone de clic d'un bâtiment : ouvre son menu
+                IslandManager m = CobbleIslands.manager();
+                if (!level.isClientSide() && hand == InteractionHand.MAIN_HAND && player instanceof ServerPlayer sp && m != null) {
+                    BlockPos at = BlockPos.containing(entity.getX(), entity.getY() + 0.5, entity.getZ());
+                    Island is = m.islandAt(at);
+                    Building b = is == null ? null : is.machineAt(at);
+                    if (b != null) {
+                        if (is.isMember(sp.getUUID())) KingdomMenus.building(sp, b.id);
+                        else sp.displayClientMessage(Msg.info(b.type.label + " (niv. " + b.level + ") du " + is.name), true);
+                    }
+                }
+                return InteractionResult.SUCCESS;
+            }
             if (entity.getTags().contains(MERCHANT_TAG)) {
                 if (!level.isClientSide() && hand == InteractionHand.MAIN_HAND && player instanceof ServerPlayer sp) KingdomMenus.market(sp);
                 return InteractionResult.SUCCESS;
@@ -117,6 +131,7 @@ public final class Protection {
                     ? InteractionResult.PASS : InteractionResult.FAIL;
         });
         AttackEntityCallback.EVENT.register((player, level, hand, entity, hit) -> {
+            if (entity.getTags().contains(MachineEntities.TAG)) return InteractionResult.FAIL;
             if (entity.getTags().contains(MERCHANT_TAG)) return InteractionResult.FAIL;
             return entity instanceof Player || allowed(player, level, entity.blockPosition()) ? InteractionResult.PASS : InteractionResult.FAIL;
         });
