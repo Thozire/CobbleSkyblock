@@ -22,6 +22,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.phys.AABB;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -216,10 +217,10 @@ public class IslandManager {
         s.set(DataComponents.CUSTOM_NAME, Component.literal(t.label + (level > 1 ? " (niv. " + level + ")" : ""))
                 .withStyle(st -> st.withColor(0xFFC94D).withBold(true).withItalic(false)));
         List<Component> lore = new ArrayList<>();
-        lore.add(Component.literal("Machine de ton royaume").withStyle(st -> st.withColor(0xC8BBA0).withItalic(false)));
+        lore.add(Component.literal("Bâtiment de ton royaume (3x3 blocs)").withStyle(st -> st.withColor(0xC8BBA0).withItalic(false)));
         lore.add(Component.literal("Production : " + t.rate(level) + " /min").withStyle(st -> st.withColor(0x8BE37A).withItalic(false)));
         lore.add(Component.literal(""));
-        lore.add(Component.literal("Clic droit sur ton île pour la poser").withStyle(st -> st.withColor(0xFFF1D0).withItalic(false)));
+        lore.add(Component.literal("Clic droit au sol, sur ton île : il se pose devant toi").withStyle(st -> st.withColor(0xFFF1D0).withItalic(false)));
         s.set(DataComponents.LORE, new ItemLore(lore));
         CompoundTag tag = new CompoundTag();
         tag.putString(MACHINE_KEY, t.id);
@@ -256,27 +257,35 @@ public class IslandManager {
         return null;
     }
 
-    /** Pose une machine (objet en main) au bloc pos, façade vers le joueur. */
+    /**
+     * Pose un bâtiment (objet en main) : le bloc visé devient le milieu de sa façade, tournée vers le joueur,
+     * et le bâtiment s'étend sur 3x3 blocs derrière.
+     */
     public String placeMachine(ServerPlayer p, ItemStack stack, BlockPos pos) {
         BuildingType t = machineOf(stack);
         if (t == null) return "Objet invalide.";
         ServerLevel level = islandsLevel();
-        if (p.level() != level) return "Les machines se posent sur ton île (/royaume go).";
+        if (p.level() != level) return "Les bâtiments se posent sur ton île (/royaume go).";
         Island is = islandOf(p.getUUID());
         if (is == null) return "Tu n'as pas de royaume.";
-        if (islandAt(pos) != is || !inBounds(is, pos)) return "Pose-la sur ton île.";
-        if (!level.getBlockState(pos).canBeReplaced()) return "Il n'y a pas la place ici.";
-        if (level.getBlockState(pos.below()).isAir()) return "Une machine doit être posée sur le sol.";
-        if (is.machineAt(pos) != null) return "Il y a déjà une machine ici.";
         if (is.buildings.size() >= maxMachines(is))
-            return "Limite atteinte (" + maxMachines(is) + " machines) : agrandis ton île pour en poser plus.";
+            return "Limite atteinte (" + maxMachines(is) + " bâtiments) : agrandis ton île pour en poser plus.";
+        BlockPos center = pos.relative(p.getDirection(), MachineEntities.RADIUS).immutable();
+        for (BlockPos q : MachineEntities.footprint(center)) {
+            if (islandAt(q) != is || !inBounds(is, q)) return "Il faut 3x3 blocs sur ton île : éloigne-toi du bord.";
+            if (is.machineAt(q) != null) return "Trop près d'un autre bâtiment.";
+            if (!level.getBlockState(q).canBeReplaced()) return "Il faut un espace dégagé de 3x3 blocs (2 de haut).";
+        }
+        if (level.getBlockState(center.below()).isAir()) return "Un bâtiment doit être posé sur le sol.";
+        if (!level.getEntitiesOfClass(ServerPlayer.class, new AABB(center).inflate(MachineEntities.RADIUS, 1, MachineEntities.RADIUS)).isEmpty())
+            return "Recule d'un pas : tu es dans l'emprise du bâtiment.";
         float yaw = p.getDirection().getOpposite().toYRot();
-        Building b = new Building(is.nextBuildingId++, t, pos.immutable(), yaw);
+        Building b = new Building(is.nextBuildingId++, t, center, yaw);
         b.level = machineLevel(stack);
         MachineEntities.spawn(level, b);
         is.buildings.add(b);
         if (!p.isCreative()) stack.shrink(1);
-        level.playSound(null, pos, SoundEvents.WOOD_PLACE, SoundSource.BLOCKS, 1f, 0.8f);
+        level.playSound(null, center, SoundEvents.WOOD_PLACE, SoundSource.BLOCKS, 1f, 0.8f);
         data().setDirty();
         return null;
     }
@@ -313,13 +322,15 @@ public class IslandManager {
 
     private int animStep;
 
-    /** Animation des machines (toutes les 10 ticks). */
+    /** Animation des bâtiments (toutes les MachineEntities.STEP_TICKS ticks). */
     public void animate() {
         ServerLevel level = islandsLevel();
         if (level == null) return;
         animStep++;
+        boolean rebuilt = false;
         for (Island is : data().islands.values())
-            for (Building b : is.buildings) MachineEntities.animate(level, b, animStep);
+            for (Building b : is.buildings) rebuilt |= MachineEntities.animate(level, b, animStep);
+        if (rebuilt) data().setDirty();
     }
 
     // ---------- bordure et chute dans le vide ----------

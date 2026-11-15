@@ -23,5 +23,7 @@ producteurs, vends au marché de la capitale et grimpe au classement. Seul ou en
 
 - `cobbleislands/` : le mod serveur (Royaumes), compilé par GitHub Actions et publié dans `builds/`.
 - `tools/` : générateurs du resource pack (`medieval_gui.py`) et des structures (`medieval_structures.py`).
+  Les bâtiments (scierie, ferme, mine, forge : 3x3 blocs, pièces animées) sont dessinés dans `machines_designs.py` ;
+  `python tools/build_royal_pack.py --machines-only` régénère leurs modèles, le pack et `MachineModels.java`.
 - `pack.toml`, `index.toml`, `mods/`, `resourcepacks/` : le modpack (packwiz) synchronisé par le serveur et le launcher.
 - `launcher/`, `launcher-src/`, `launcher.json` : le launcher Windows et sa configuration en ligne.

@@ -17,41 +17,76 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.item.component.CustomModelData;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.AABB;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Random;
 import java.util.UUID;
 
 /**
- * Entités d'affichage des machines : création, animation (rotation, balancier, flamme), suppression.
+ * Entités d'affichage des bâtiments : création, animation par images-clés, particules, suppression.
+ * Un bâtiment occupe 3x3 blocs au sol (barrières invisibles) autour de son bloc central ; toutes ses
+ * entités d'affichage sont posées au centre de ce bloc et décalées par leur transformation.
  * Tout passe par les données NBT publiques des entités (comme /summon et /data), sans mixin.
  */
 final class MachineEntities {
     private MachineEntities() {}
 
     static final String TAG = "royaumes_machine";
+    /** Emprise : RADIUS blocs autour du centre, HEIGHT blocs de haut. */
+    static final int RADIUS = 1, HEIGHT = 2;
+    /** Durée d'un pas d'animation, en ticks. */
+    static final int STEP_TICKS = 5;
     private static final Random RND = new Random();
+
+    // ---------- emprise ----------
+
+    static List<BlockPos> footprint(BlockPos center) {
+        List<BlockPos> l = new ArrayList<>();
+        for (int dy = 0; dy < HEIGHT; dy++)
+            for (int dx = -RADIUS; dx <= RADIUS; dx++)
+                for (int dz = -RADIUS; dz <= RADIUS; dz++) l.add(center.offset(dx, dy, dz));
+        return l;
+    }
+
+    static boolean covers(Building b, BlockPos pos) {
+        int dy = pos.getY() - b.pos.getY();
+        return dy >= 0 && dy < HEIGHT && Math.abs(pos.getX() - b.pos.getX()) <= RADIUS && Math.abs(pos.getZ() - b.pos.getZ()) <= RADIUS;
+    }
 
     // ---------- création ----------
 
     static void spawn(ServerLevel level, Building b) {
         b.entities.clear();
-        level.setBlock(b.pos, Blocks.BARRIER.defaultBlockState(), Block.UPDATE_ALL);
-        UUID base = display(level, b, MachineModels.base(b.type.id), 0, 0, 0, false);
+        for (BlockPos p : footprint(b.pos)) {
+            BlockState s = level.getBlockState(p);
+            if (p.equals(b.pos) || s.isAir() || s.canBeReplaced()) level.setBlock(p, Blocks.BARRIER.defaultBlockState(), Block.UPDATE_ALL);
+        }
+        UUID base = display(level, b, MachineModels.base(b.type.id), transform(0, 0, 0, 1, 0, 1, 0, 1, 1, 1), false);
         if (base != null) b.entities.add(base);
         for (MachineModels.Part part : MachineModels.parts(b.type.id)) {
-            UUID u = display(level, b, part.cmd(), part.ox(), part.oy(), part.oz(), part.bright());
+            float[] k = part.keys();
+            int last = k.length - 9;
+            CompoundTag rest = last >= 0
+                    ? pose(part, k[last + 1], k[last + 2], k[last + 3], (int) k[last + 4], k[last + 5], k[last + 6], k[last + 7], k[last + 8])
+                    : pose(part, 0, 0, 0, 1, 0, 1, 1, 1);
+            UUID u = display(level, b, part.cmd(), rest, part.bright());
             if (u != null) b.entities.add(u);
         }
+        b.model = MachineModels.VERSION;
     }
 
-    private static UUID display(ServerLevel level, Building b, int cmd, float ox, float oy, float oz, boolean bright) {
+    private static UUID display(ServerLevel level, Building b, int cmd, CompoundTag transformation, boolean bright) {
         CompoundTag t = new CompoundTag();
         t.putString("id", "minecraft:item_display");
         ItemStack s = new ItemStack(Items.PAPER);
         s.set(DataComponents.CUSTOM_MODEL_DATA, new CustomModelData(cmd));
         t.put("item", s.save(level.registryAccess()));
         t.putString("item_display", "none");
-        t.put("transformation", transform(0, 0, 0, 1, ox / 16f, oy / 16f, oz / 16f, 1, 1, 1));
+        t.put("transformation", transformation);
+        t.putFloat("view_range", 1.5f);
         if (bright) {
             CompoundTag br = new CompoundTag();
             br.putInt("sky", 15);
@@ -67,7 +102,7 @@ final class MachineEntities {
             return en;
         });
         if (e == null || !level.addFreshEntity(e)) {
-            CobbleIslands.LOG.warn("Impossible de créer l'affichage de la machine {}", b.type.id);
+            CobbleIslands.LOG.warn("Impossible de créer l'affichage du bâtiment {}", b.type.id);
             return null;
         }
         return e.getUUID();
@@ -88,6 +123,19 @@ final class MachineEntities {
         return t;
     }
 
+    /**
+     * Transformation d'une pièce : son pivot plus un décalage (repère de dessin, 1/16 de bloc), une rotation
+     * de {@code deg} degrés autour de l'axe (0 = X, 1 = Y, 2 = Z) et une échelle, le tout autour du pivot.
+     * Un item_display affiche son objet tourné de 180° autour de Y : X et Z sont inversés, donc le sens
+     * des rotations autour de X et Z aussi.
+     */
+    private static CompoundTag pose(MachineModels.Part p, float tx, float ty, float tz, int axis, float deg, float sx, float sy, float sz) {
+        double a = Math.toRadians(axis == 1 ? deg : -deg) / 2;
+        float s = (float) Math.sin(a), c = (float) Math.cos(a);
+        return transform(axis == 0 ? s : 0, axis == 1 ? s : 0, axis == 2 ? s : 0, c,
+                -(p.px() - 24 + tx) / 16f, (p.py() - 8 + ty) / 16f, -(p.pz() - 24 + tz) / 16f, sx, sy, sz);
+    }
+
     // ---------- suppression ----------
 
     static void remove(ServerLevel level, Building b) {
@@ -95,74 +143,97 @@ final class MachineEntities {
             Entity e = level.getEntity(u);
             if (e != null) e.discard();
         }
-        // sécurité : toute entité de machine restée sur ce bloc
-        for (Entity e : level.getEntities((Entity) null, new net.minecraft.world.phys.AABB(b.pos).inflate(0.1), en -> en.getTags().contains(TAG)))
+        // sécurité : toute entité de bâtiment restée sur le bloc central
+        for (Entity e : level.getEntities((Entity) null, new AABB(b.pos).inflate(0.1), en -> en.getTags().contains(TAG)))
             e.discard();
         b.entities.clear();
-        if (level.getBlockState(b.pos).is(Blocks.BARRIER)) level.setBlock(b.pos, Blocks.AIR.defaultBlockState(), Block.UPDATE_ALL);
+        for (BlockPos p : footprint(b.pos))
+            if (level.getBlockState(p).is(Blocks.BARRIER)) level.setBlock(p, Blocks.AIR.defaultBlockState(), Block.UPDATE_ALL);
     }
 
     // ---------- animation ----------
 
-    /** Appelé toutes les 10 ticks ; step augmente de 1 à chaque appel. */
-    static void animate(ServerLevel level, Building b, int step) {
-        if (b.full()) return;
+    /**
+     * Appelé toutes les {@link #STEP_TICKS} ticks ; step augmente de 1 à chaque appel.
+     * Renvoie true si le bâtiment a été reconstruit (ancien modèle) et doit être sauvegardé.
+     */
+    static boolean animate(ServerLevel level, Building b, int step) {
         double cx = b.pos.getX() + 0.5, cy = b.pos.getY() + 0.5, cz = b.pos.getZ() + 0.5;
-        if (!level.hasNearbyAlivePlayer(cx, cy, cz, 48)) return;
+        if (!level.hasNearbyAlivePlayer(cx, cy, cz, 48)) return false;
         MachineModels.Part[] parts = MachineModels.parts(b.type.id);
-        for (int i = 0; i < parts.length && i + 1 < b.entities.size(); i++) {
+        if (b.model != MachineModels.VERSION || b.entities.size() != parts.length + 1) {
+            // bâtiment posé avec d'anciens modèles : on le reconstruit dès que sa zone est chargée
+            if (!level.isLoaded(b.pos) || !level.isPositionEntityTicking(b.pos)) return false;
+            remove(level, b);
+            spawn(level, b);
+            return true;
+        }
+        if (b.full()) return false;
+        int t = step + b.id * 7;          // décalage : deux bâtiments voisins ne bougent pas à l'unisson
+        for (int i = 0; i < parts.length; i++) {
+            MachineModels.Part p = parts[i];
+            float[] k = p.keys();
+            CompoundTag tr;
+            int dur;
+            if (p.jitter() > 0) {         // flamme : échelle aléatoire à chaque pas
+                float j = p.jitter();
+                float w = 1 + (RND.nextFloat() - 0.5f) * j;
+                tr = pose(p, 0, 0, 0, 1, 0, w, 1 + (RND.nextFloat() - 0.4f) * 2 * j, w);
+                dur = 1;
+            } else if (k.length >= 9) {   // image-clé qui commence à ce pas
+                int total = 0;
+                for (int n = 0; n < k.length; n += 9) total += (int) k[n];
+                int lt = Math.floorMod(t, total), start = 0, at = -1;
+                for (int n = 0; n < k.length && start <= lt; n += 9) {
+                    if (start == lt) { at = n; break; }
+                    start += (int) k[n];
+                }
+                if (at < 0) continue;
+                tr = pose(p, k[at + 1], k[at + 2], k[at + 3], (int) k[at + 4], k[at + 5], k[at + 6], k[at + 7], k[at + 8]);
+                dur = (int) k[at];
+            } else continue;
             Entity e = level.getEntity(b.entities.get(i + 1));
             if (e == null) continue;
-            MachineModels.Part p = parts[i];
-            float qx = 0, qy = 0, qz = 0, qw = 1, sx = 1, sy = 1, sz = 1;
-            switch (p.anim()) {
-                case "spin_z" -> { double a = Math.toRadians(step * 90.0) / 2; qz = (float) Math.sin(a); qw = (float) Math.cos(a); }
-                case "spin_y" -> { double a = Math.toRadians(step * 45.0) / 2; qy = (float) Math.sin(a); qw = (float) Math.cos(a); }
-                case "swing" -> { double a = Math.toRadians(step % 2 == 0 ? 0 : -38) / 2; qz = (float) Math.sin(a); qw = (float) Math.cos(a); }
-                case "flicker" -> { sy = 0.8f + RND.nextFloat() * 0.4f; sx = sz = 0.92f + RND.nextFloat() * 0.16f; }
-                default -> { }
-            }
-            CompoundTag t = new CompoundTag();
-            e.saveWithoutId(t);
-            t.put("transformation", transform(qx, qy, qz, qw, p.ox() / 16f, p.oy() / 16f, p.oz() / 16f, sx, sy, sz));
-            t.putInt("interpolation_duration", 10);
-            t.putInt("start_interpolation", 0);
-            e.load(t);
+            CompoundTag nbt = new CompoundTag();
+            e.saveWithoutId(nbt);
+            nbt.put("transformation", tr);
+            nbt.putInt("interpolation_duration", dur * STEP_TICKS);
+            nbt.putInt("start_interpolation", 0);
+            e.load(nbt);
         }
-        if (step % 2 == 0) particles(level, b);
+        for (MachineModels.Emitter em : MachineModels.emitters(b.type.id)) {
+            if (Math.floorMod(t, em.period()) != em.at()) continue;
+            ParticleOptions o = particle(em.kind());
+            if (o == null) continue;
+            double[] w = world(b, em.x(), em.y(), em.z());
+            level.sendParticles(o, w[0], w[1], w[2], em.count(), em.dx(), em.dy(), em.dz(), em.speed());
+        }
+        return false;
     }
 
-    /** Point du modèle (en 1/16, repère du modèle) converti en coordonnées du monde. */
+    private static ParticleOptions particle(String kind) {
+        return switch (kind) {
+            case "wood" -> new BlockParticleOption(ParticleTypes.BLOCK, Blocks.OAK_PLANKS.defaultBlockState());
+            case "stone" -> new BlockParticleOption(ParticleTypes.BLOCK, Blocks.STONE.defaultBlockState());
+            case "splash" -> ParticleTypes.SPLASH;
+            case "ash" -> ParticleTypes.WHITE_ASH;
+            case "grow" -> ParticleTypes.HAPPY_VILLAGER;
+            case "smoke" -> ParticleTypes.CAMPFIRE_COSY_SMOKE;
+            case "spark" -> ParticleTypes.ELECTRIC_SPARK;
+            case "lava" -> ParticleTypes.LAVA;
+            case "flame" -> ParticleTypes.FLAME;
+            case "small_flame" -> ParticleTypes.SMALL_FLAME;
+            default -> null;
+        };
+    }
+
+    /** Point du repère de dessin (1/16 de bloc, centre du bâtiment en X = Z = 24) converti en coordonnées du monde. */
     private static double[] world(Building b, double mx, double my, double mz) {
-        double lx = (mx - 8) / 16.0, lz = (mz - 8) / 16.0;
+        double lx = -(mx - 24) / 16.0, lz = -(mz - 24) / 16.0;
         double phi = Math.toRadians(-b.yaw);
         double wx = lx * Math.cos(phi) + lz * Math.sin(phi);
         double wz = -lx * Math.sin(phi) + lz * Math.cos(phi);
         return new double[]{b.pos.getX() + 0.5 + wx, b.pos.getY() + my / 16.0, b.pos.getZ() + 0.5 + wz};
-    }
-
-    private static void particles(ServerLevel level, Building b) {
-        switch (b.type) {
-            case SCIERIE -> {
-                double[] w = world(b, 8, 12, 8);
-                level.sendParticles(new BlockParticleOption(ParticleTypes.BLOCK, Blocks.OAK_PLANKS.defaultBlockState()), w[0], w[1], w[2], 3, 0.12, 0.05, 0.12, 0.02);
-            }
-            case MOULIN -> {
-                double[] w = world(b, 8, 13, 8);
-                level.sendParticles(ParticleTypes.WHITE_ASH, w[0], w[1], w[2], 4, 0.25, 0.1, 0.25, 0.0);
-            }
-            case MINE -> {
-                double[] w = world(b, 8, 4, 8);
-                level.sendParticles(new BlockParticleOption(ParticleTypes.BLOCK, Blocks.STONE.defaultBlockState()), w[0], w[1], w[2], 3, 0.15, 0.05, 0.15, 0.02);
-            }
-            case FORGE -> {
-                double[] chim = world(b, 4.5, 21.5, 2.5);
-                level.sendParticles(ParticleTypes.CAMPFIRE_COSY_SMOKE, chim[0], chim[1], chim[2], 1, 0.05, 0.05, 0.05, 0.01);
-                double[] fire = world(b, 4.5, 9.5, 10);
-                ParticleOptions o = RND.nextInt(3) == 0 ? ParticleTypes.LAVA : ParticleTypes.FLAME;
-                level.sendParticles(o, fire[0], fire[1], fire[2], 1, 0.15, 0.05, 0.15, 0.0);
-            }
-        }
     }
 
     static BlockPos posOf(Building b) { return b.pos; }

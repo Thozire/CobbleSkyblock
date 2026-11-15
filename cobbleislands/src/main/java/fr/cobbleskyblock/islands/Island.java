@@ -49,7 +49,7 @@ public class Island {
     }
 
     public Building machineAt(net.minecraft.core.BlockPos pos) {
-        for (Building b : buildings) if (b.pos.equals(pos)) return b;
+        for (Building b : buildings) if (MachineEntities.covers(b, pos)) return b;
         return null;
     }
 

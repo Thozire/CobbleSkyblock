@@ -63,7 +63,8 @@ public class CobbleIslands implements ModInitializer {
         if (manager == null) return;
         ticks++;
         if (ticks % 20 == 0) manager.produce();
-        if (ticks % 10 == 0) { manager.animate(); manager.watchPlayers(); }
+        if (ticks % MachineEntities.STEP_TICKS == 0) manager.animate();
+        if (ticks % 10 == 0) manager.watchPlayers();
         if (ticks % 40 == 0) for (ServerPlayer p : server.getPlayerList().getPlayers()) Hud.update(p, manager);
         if (ticks % 1200 == 0) SpawnBuilder.refreshLeaderboard(manager);
     }

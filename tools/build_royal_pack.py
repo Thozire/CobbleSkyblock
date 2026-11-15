@@ -88,29 +88,74 @@ def add_paper_models(pairs):
     it["model"]["entries"] = [ent[k] for k in sorted(ent)]
     write_json(ip, it)
 
+def drop_machine_models():
+    """Retire du papier les anciens modèles de machines (custom_model_data 7300 à 7399)."""
+    mp = f"{PACK}/assets/minecraft/models/item/paper.json"
+    m = json.load(open(mp))
+    m["overrides"] = [o for o in m["overrides"] if not 7300 <= o["predicate"]["custom_model_data"] <= 7399]
+    write_json(mp, m)
+    ip = f"{PACK}/assets/minecraft/items/paper.json"
+    it = json.load(open(ip))
+    it["model"]["entries"] = [e for e in it["model"]["entries"] if not 7300 <= e["threshold"] <= 7399]
+    write_json(ip, it)
+
+def jf(v):
+    """Nombre flottant Java compact."""
+    v = round(float(v), 3)
+    return ("%d" % v if v == int(v) else repr(v)) + "f"
+
 def build_machines():
+    drop_machine_models()
     table = machines.export()
     add_paper_models(machines.model_overrides(table))
-    lines = []
-    for name, info in table.items():
-        parts = ", ".join("new Part(%d, %sf, %sf, %sf, \"%s\", %s)" % (info["cmd"]["parts"][i], p["offset"][0], p["offset"][1], p["offset"][2],
-                                                                     p["anim"], "true" if p["bright"] else "false")
-                          for i, p in enumerate(info["parts"]))
-        lines.append((name, info["cmd"]["item"], info["cmd"]["base"], parts))
-    sw = lambda f: "\n".join('            case "%s" -> %s;' % (n, f(x)) for n, *x in lines)
+    axis = {"x": 0, "y": 1, "z": 2}
+    consts, items, bases, parts_sw, em_sw = [], [], [], [], []
+    for name, (ids, b) in table.items():
+        up = name.upper()
+        rows = []
+        for j, p in enumerate(b.parts):
+            keys = ", ".join(", ".join([jf(k[0]), jf(k[1][0]), jf(k[1][1]), jf(k[1][2]), jf(axis[k[2]]), jf(k[3]), jf(k[4][0]), jf(k[4][1]), jf(k[4][2])])
+                             for k in p.keys)
+            rows.append("            new Part(%d, %s, %s, %s, %s, %s, new float[]{%s}),   // %s" % (
+                ids["parts"] + j, jf(p.pivot[0]), jf(p.pivot[1]), jf(p.pivot[2]), "true" if p.bright else "false", jf(p.jitter), keys, p.name))
+        consts.append("    private static final Part[] %s = {\n%s\n    };" % (up, "\n".join(rows)))
+        ems = ["            new Emitter(\"%s\", %s, %s, %s, %d, %s, %s, %s, %s, %d, %d)," % (
+            e.kind, jf(e.pos[0]), jf(e.pos[1]), jf(e.pos[2]), e.count, jf(e.spread[0]), jf(e.spread[1]), jf(e.spread[2]), jf(e.speed), e.period, e.at)
+               for e in b.emitters]
+        consts.append("    private static final Emitter[] %s_FX = {\n%s\n    };" % (up, "\n".join(ems)))
+        items.append('            case "%s" -> %d;' % (name, ids["item"]))
+        bases.append('            case "%s" -> %d;' % (name, ids["base"]))
+        parts_sw.append('            case "%s" -> %s;' % (name, up))
+        em_sw.append('            case "%s" -> %s_FX;' % (name, up))
+    nl = "\n"
     src = f'''package fr.cobbleskyblock.islands;
 
-/** Généré par tools/build_royal_pack.py (modèles de tools/machines.py) — ne pas modifier à la main. */
+/** Généré par tools/build_royal_pack.py (bâtiments de tools/machines_designs.py) — ne pas modifier à la main. */
 final class MachineModels {{
     private MachineModels() {{}}
 
-    /** Pièce animée : modèle, décalage (1/16 de bloc), animation, pleine lumière. */
-    record Part(int cmd, float ox, float oy, float oz, String anim, boolean bright) {{}}
+    /** Version des modèles : un bâtiment posé avec une autre version est reconstruit. */
+    static final int VERSION = {machines.VERSION};
+
+    /**
+     * Pièce d'un bâtiment : modèle, pivot (repère de dessin, 1/16 de bloc), pleine lumière, vacillement
+     * aléatoire (flammes) et images-clés. Chaque clé tient en 9 valeurs : durée (en pas de 5 ticks),
+     * décalage x y z, axe de rotation (0 = X, 1 = Y, 2 = Z), angle en degrés, échelle x y z.
+     */
+    record Part(int cmd, float px, float py, float pz, boolean bright, float jitter, float[] keys) {{}}
+
+    /**
+     * Particules : type, position (repère de dessin), nombre, dispersion, vitesse, période et instant (en pas).
+     * Nombre 0 : une seule particule lancée dans la direction (dx, dy, dz) à la vitesse donnée.
+     */
+    record Emitter(String kind, float x, float y, float z, int count, float dx, float dy, float dz, float speed, int period, int at) {{}}
+
+{(nl + nl).join(consts)}
 
     /** Objet complet (icône, objet à poser). */
     static int item(String id) {{
         return switch (id) {{
-{sw(lambda x: x[0])}
+{nl.join(items)}
             default -> 0;
         }};
     }}
@@ -118,15 +163,22 @@ final class MachineModels {{
     /** Socle immobile. */
     static int base(String id) {{
         return switch (id) {{
-{sw(lambda x: x[1])}
+{nl.join(bases)}
             default -> 0;
         }};
     }}
 
     static Part[] parts(String id) {{
         return switch (id) {{
-{sw(lambda x: "new Part[]{" + x[2] + "}")}
+{nl.join(parts_sw)}
             default -> new Part[0];
+        }};
+    }}
+
+    static Emitter[] emitters(String id) {{
+        return switch (id) {{
+{nl.join(em_sw)}
+            default -> new Emitter[0];
         }};
     }}
 }}
@@ -209,6 +261,10 @@ def zip_pack():
     return dst
 
 if __name__ == "__main__":
+    if "--machines-only" in sys.argv:        # ne régénère que les bâtiments (le reste du pack est gardé tel quel)
+        build_machines()
+        print("pack :", zip_pack())
+        sys.exit(0)
     clean_old()
     tiles = build_tiles()
     build_fonts(tiles)
