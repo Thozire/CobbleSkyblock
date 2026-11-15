@@ -10,9 +10,8 @@ def scierie():
     """Scierie à eau : halle ouverte sur quatre poteaux, roue à aubes, scie à cadre qui monte et descend, grume qui avance."""
     b, glow = Model(), Model()
     # --- aire de sciage dallée, canal du moulin
-    b.box((1, 0, 2), (35, 1.6, 47), {"*": STONE, "up": "mc:stone_bricks"})
-    b.box((9, 1.6, 2.5), (27, 2, 46.5), SP)                                # plancher sous la voie du chariot
-    b.box((11, 0, 0), (25, 1, 2), SP)                                     # marche d'entrée
+    b.box((1, 0, 2), (35, 2, 47), {"*": STONE, "up": "mc:stone_bricks"})
+    b.box((11, 0, 0), (25, 1, 2), STONE)                                  # marche d'entrée en pierre
     b.box((36, 0, 0), (48, 1, 48), COBBLE)
     b.box((36, 1, 0), (37.5, 5, 48), MCOBBLE)
     b.box((46.5, 1, 0), (48, 5, 48), MCOBBLE)
@@ -228,7 +227,7 @@ def moulin():
              Part("lumiere", glow, C, bright=True)]
     em = [Emitter("ash", (24, 9, 16), 2, (0.25, 0.3, 0.15), 0.0, period=4),
           Emitter("grow", (37, 12, 6), 1, (0.5, 0.2, 0.3), 0.0, period=10, at=3)]
-    return Building("moulin", b, parts, em)
+    return Building("ferme", b, parts, em)
 
 
 # ====================================================================== MINE
@@ -513,4 +512,4 @@ def forge():
     return Building("forge", b, parts, em)
 
 
-MACHINES = {"scierie": scierie, "moulin": moulin, "mine": mine, "forge": forge}
+MACHINES = {"scierie": scierie, "ferme": moulin, "mine": mine, "forge": forge}

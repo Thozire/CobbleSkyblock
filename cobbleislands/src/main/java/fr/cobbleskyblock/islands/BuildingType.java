@@ -16,7 +16,7 @@ public enum BuildingType {
     SCIERIE("Scierie", "scierie", 150,
             new int[]{12, 20, 32, 48, 70}, new int[]{0, 400, 1200, 3500, 9000},
             List.of(new Output("minecraft:oak_log", 1, 6), new Output("minecraft:spruce_log", 3, 3), new Output("minecraft:dark_oak_log", 5, 2))),
-    MOULIN("Moulin", "moulin", 300,
+    MOULIN("Ferme", "ferme", 300,
             new int[]{10, 18, 28, 42, 60}, new int[]{0, 600, 1800, 5000, 12000},
             List.of(new Output("minecraft:wheat", 1, 6), new Output("minecraft:carrot", 2, 3), new Output("minecraft:potato", 3, 3), new Output("minecraft:pumpkin", 5, 1))),
     MINE("Mine", "mine", 600,
@@ -62,6 +62,11 @@ public enum BuildingType {
     /** Capacité du stock : 30 minutes de production. */
     public int capacity(int level) { return rate(level) * 30; }
 
+    /** Ressources débloquées exactement à ce niveau. */
+    public List<Output> unlocks(int level) {
+        return outputs.stream().filter(o -> o.fromLevel == level).toList();
+    }
+
     public int nextCost(int level) { return level >= MAX_LEVEL ? -1 : upgradeCost[level]; }
 
     /** Tire au sort une ressource parmi celles débloquées à ce niveau. */
@@ -78,7 +83,7 @@ public enum BuildingType {
     }
 
     public static BuildingType byName(String s) {
-        if ("ferme".equalsIgnoreCase(s)) return MOULIN;
+        if ("moulin".equalsIgnoreCase(s)) return MOULIN;
         for (BuildingType t : values()) if (t.name().equalsIgnoreCase(s) || t.id.equalsIgnoreCase(s)) return t;
         return null;
     }

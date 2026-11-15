@@ -6,7 +6,13 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.network.chat.Component;
+import net.minecraft.world.item.component.ItemLore;
+
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 /** Le marché de la capitale : prix de rachat des ressources et ventes. */
@@ -39,30 +45,50 @@ public final class Market {
 
     public static String id(Item item) { return BuiltInRegistries.ITEM.getKey(item).toString(); }
 
-    /** Vend tout le contenu des entrepôts du royaume. Renvoie le gain. */
-    public static long sellStorages(Island is) {
-        long gain = 0;
-        for (Building b : is.buildings) gain += sellBuilding(is, b);
-        return gain;
+    /** Prix d'une pile : 0 si l'objet n'est pas vendable (objets renommés, bâtiments, objets sans prix). */
+    public static int priceOf(ItemStack s) {
+        if (s.isEmpty() || s.has(DataComponents.CUSTOM_NAME) || s.has(DataComponents.CUSTOM_DATA)) return 0;
+        return price(id(s.getItem()));
     }
 
-    public static long sellBuilding(Island is, Building b) {
-        long gain = 0;
-        for (Map.Entry<String, Long> e : b.storage.entrySet()) gain += e.getValue() * price(e.getKey());
-        b.storage.clear();
+    /** Ressource sortie d'un bâtiment : sa description indique son prix et comment la vendre. */
+    public static ItemStack stack(String itemId, int count) {
+        ItemStack s = new ItemStack(item(itemId), count);
+        int pr = price(itemId);
+        if (pr <= 0) return s;
+        List<Component> lore = new ArrayList<>();
+        lore.add(Component.literal("Ressource du royaume").withStyle(st -> st.withColor(0x9A9080).withItalic(false)));
+        lore.add(Component.literal(""));
+        lore.add(Component.literal("Valeur : ").withStyle(st -> st.withColor(0xFFF1D0).withItalic(false))
+                .append(Component.literal(fmt(pr) + " écu" + (pr > 1 ? "s" : "")).withStyle(st -> st.withColor(0xFFAA00).withItalic(false)))
+                .append(Component.literal(" l'unité").withStyle(st -> st.withColor(0x9A9080).withItalic(false))));
+        lore.add(Component.literal(""));
+        lore.add(Component.literal("Vends l'objet en main avec ").withStyle(st -> st.withColor(0xFFF1D0).withItalic(false))
+                .append(Component.literal("/sell").withStyle(st -> st.withColor(0xFFE14D).withItalic(false))));
+        lore.add(Component.literal("ou tout ton inventaire avec ").withStyle(st -> st.withColor(0xFFF1D0).withItalic(false))
+                .append(Component.literal("/sellall").withStyle(st -> st.withColor(0xFFE14D).withItalic(false))));
+        s.set(DataComponents.LORE, new ItemLore(lore));
+        return s;
+    }
+
+    /** Vend la pile tenue en main. Renvoie le gain (0 si elle n'est pas vendable). */
+    public static long sellHand(ServerPlayer p, Island is) {
+        ItemStack s = p.getMainHandItem();
+        long gain = (long) priceOf(s) * s.getCount();
+        if (gain <= 0) return 0;
+        p.getInventory().setItem(p.getInventory().selected, ItemStack.EMPTY);
         is.earn(gain);
         return gain;
     }
 
-    /** Vend les ressources reconnues présentes dans l'inventaire du joueur. */
-    public static long sellInventory(ServerPlayer p, Island is) {
+    /** Vend tout ce qui est vendable dans l'inventaire (ou seulement la ressource `only`). Renvoie le gain. */
+    public static long sellInventory(ServerPlayer p, Island is, String only) {
         long gain = 0;
         var inv = p.getInventory();
         for (int i = 0; i < inv.getContainerSize(); i++) {
             ItemStack s = inv.getItem(i);
-            if (s.isEmpty() || s.has(net.minecraft.core.component.DataComponents.CUSTOM_NAME)) continue;
-            int pr = price(id(s.getItem()));
-            if (pr <= 0) continue;
+            int pr = priceOf(s);
+            if (pr <= 0 || (only != null && !only.equals(id(s.getItem())))) continue;
             gain += (long) pr * s.getCount();
             inv.setItem(i, ItemStack.EMPTY);
         }
@@ -70,11 +96,17 @@ public final class Market {
         return gain;
     }
 
-    /** Total stocké, par ressource, dans tous les entrepôts du royaume. */
-    public static Map<String, Long> totals(Island is) {
+    public static long sellInventory(ServerPlayer p, Island is) { return sellInventory(p, is, null); }
+
+    /** Quantité vendable de chaque ressource dans l'inventaire du joueur. */
+    public static Map<String, Long> inventoryTotals(ServerPlayer p) {
         Map<String, Long> m = new LinkedHashMap<>();
         for (String k : PRICES.keySet()) m.put(k, 0L);
-        for (Building b : is.buildings) b.storage.forEach((k, v) -> m.merge(k, v, Long::sum));
+        var inv = p.getInventory();
+        for (int i = 0; i < inv.getContainerSize(); i++) {
+            ItemStack s = inv.getItem(i);
+            if (priceOf(s) > 0) m.merge(id(s.getItem()), (long) s.getCount(), Long::sum);
+        }
         return m;
     }
 

@@ -93,7 +93,8 @@ public final class KingdomMenus {
                 "§7Seigneur : §f" + is.ownerName(),
                 "§7Trésor : " + ecus(is.money),
                 "§7Revenu : §a+" + Market.fmt(mgr().incomePerMinute(is)) + " /min",
-                "§7Île : §frayon " + r + " §8(niv. " + is.sizeLevel + ")",
+                "§7Terrain : §f" + (2 * r + 1) + " × " + (2 * r + 1) + " §8(niv. " + is.sizeLevel + ")",
+                "§7Bâtiments : §f" + is.buildings.size() + " / " + mgr().maxMachines(is),
                 "§7Équipe : §f" + is.members.size() + "/" + mgr().maxMembers(is),
                 "§7Rang : §b#" + mgr().rankOf(is)));
     }
@@ -128,9 +129,9 @@ public final class KingdomMenus {
         IslandMenu.open(p, title, m -> {
             zone(m, 0, 1, 0, 8, button(I_BLANK, "Aller à mon royaume", GREEN, "§7Te téléporte sur ton île.", "", "§8Raccourci : §e/royaume go"),
                     pl -> { pl.closeContainer(); cmd(pl, "royaume go"); });
-            zone(m, 2, 3, 0, 3, button(I_BLANK, "Bâtiments", CREAM, "§7Achète et gère tes machines :", "§7scierie, moulin, mine, forge.", "",
+            zone(m, 2, 3, 0, 3, button(I_BLANK, "Bâtiments", CREAM, "§7Achète et gère tes machines :", "§7scierie, ferme, mine, forge.", "",
                     "§f" + is.buildings.size() + "/" + mgr().maxMachines(is) + " §7machines"), KingdomMenus::buildings);
-            zone(m, 2, 3, 5, 8, button(I_BLANK, "Améliorer", GREEN, "§7Agrandis ton île", "§7et ta cour."), KingdomMenus::domain);
+            zone(m, 2, 3, 5, 8, button(I_BLANK, "Améliorer", GREEN, "§7Terrain, nombre de bâtiments", "§7et taille de la cour."), KingdomMenus::domain);
             zone(m, 4, 5, 0, 3, button(I_BLANK, "Membres", BLUE, "§7Ta cour : membres", "§7et invitations.", "",
                     "§f" + is.members.size() + "/" + mgr().maxMembers(is) + " §7membres"), KingdomMenus::team);
             zone(m, 4, 5, 5, 8, button(I_BLANK, "Aller à la capitale", RED, "§7Marché, classement et", "§7autres royaumes.", "",
@@ -186,8 +187,6 @@ public final class KingdomMenus {
                 i++;
             }
             backBtn(m, KingdomMenus::main);
-            m.set(49, button(I_SELL_ALL, "Tout vendre", GOLD, "§7Vend le stock de toutes", "§7tes machines au marché."),
-                    pl -> { cmd(pl, "royaume vendre"); buildings(pl); });
             closeBtn(m, 53);
         });
     }
@@ -206,46 +205,51 @@ public final class KingdomMenus {
         if (is == null) { start(p); return; }
         Building b = is.building(bid);
         if (b == null) { buildings(p); return; }
-        int cap = b.type.capacity(b.level);
-        long value = 0;
-        for (Map.Entry<String, Long> e : b.storage.entrySet()) value += e.getValue() * Market.price(e.getKey());
-        long finalValue = value;
-        IslandMenu.open(p, Page.BUILDING, b.type.label + " — niveau " + b.level, m -> {
-            m.set(4, glow(button(b.type.icon(), b.type.label, GOLD, "§7Niveau : §f" + b.level + "/" + BuildingType.MAX_LEVEL,
-                    "§7Production : §a" + b.type.rate(b.level) + "/min", "§7Stock : §f" + b.stored() + "/" + cap)));
+        BuildingType t = b.type;
+        int cap = t.capacity(b.level);
+        IslandMenu.open(p, Page.BUILDING, t.label + " — niveau " + b.level, m -> {
+            m.set(4, glow(button(t.icon(), t.label, GOLD, "§7Niveau : §f" + b.level + "/" + BuildingType.MAX_LEVEL,
+                    "§7Production : §a" + t.rate(b.level) + " /min", "§7Stock : §f" + Market.fmt(b.stored()) + " / " + Market.fmt(cap) + (b.full() ? " §c(plein !)" : ""),
+                    "§7Produit : §f" + outputs(t, b.level))));
             closeBtn(m, 8);
-            m.set(19, button(I_HARVEST, "Récolter", GREEN, "§7Met le stock de la machine", "§7dans ton inventaire."),
+            m.set(20, button(I_HARVEST, "Récupérer le stock", GREEN, "§7Met tout le stock du bâtiment", "§7dans ton inventaire.", "",
+                    "§7Vends ensuite avec §e/sell §7ou §e/sellall§7."),
                     pl -> { harvest(pl, is, b); building(pl, bid); });
-            m.set(21, button(I_SELL, "Vendre", GOLD, "§7Vend tout le stock :", "§7" + ecus(finalValue)),
+            int cost = t.nextCost(b.level);
+            if (cost < 0) {
+                m.set(22, glow(button(I_UPGRADE, "Niveau maximum", GOLD, "§7Ce bâtiment est au sommet !",
+                        "§7Production : §a" + t.rate(b.level) + " /min", "§7Stock max : §f" + Market.fmt(cap))));
+            } else {
+                int nl = b.level + 1;
+                List<String> lore = new ArrayList<>();
+                lore.add("§7Niveau : §f" + b.level + " §7→ §a" + nl);
+                lore.add("§7Production : §f" + t.rate(b.level) + " §7→ §a" + t.rate(nl) + " /min");
+                lore.add("§7Stock max : §f" + Market.fmt(cap) + " §7→ §a" + Market.fmt(t.capacity(nl)));
+                for (BuildingType.Output o : t.unlocks(nl))
+                    lore.add("§7Nouvelle ressource : §b" + o.asItem().getDescription().getString() + " §8(" + Market.price(o.item()) + " écus)");
+                lore.add("");
+                lore.add("§7Prix : " + ecus(cost));
+                lore.add(is.money >= cost ? "§aClic : améliorer" : "§cIl te manque " + Market.fmt(cost - is.money) + " écus");
+                m.set(22, button(I_UPGRADE, "Améliorer au niveau " + nl, GREEN, lore.toArray(new String[0])),
+                        pl -> {
+                            String err = mgr().upgradeBuilding(is, b);
+                            pl.sendSystemMessage(err == null ? Msg.ok(t.label + " améliorée au niveau " + b.level + " !") : Msg.err(err));
+                            building(pl, bid);
+                        });
+            }
+            m.set(24, button(I_DEMOLISH, "Ramasser le bâtiment", RED, "§7Le bâtiment revient dans ton", "§7inventaire et garde son niveau.", "§7Son stock t'est rendu aussi."),
                     pl -> {
-                        long g = Market.sellBuilding(is, b);
-                        mgr().data().setDirty();
-                        pl.sendSystemMessage(Msg.ok("Vendu pour " + Market.fmt(g) + " écus."));
-                        building(pl, bid);
-                    });
-            int cost = b.type.nextCost(b.level);
-            m.set(23, cost < 0 ? glow(button(I_UPGRADE, "Niveau maximum", GOLD, "§7Ce bâtiment est au sommet !"))
-                    : button(I_UPGRADE, "Améliorer → niv. " + (b.level + 1), GREEN, "§7Prix : " + ecus(cost),
-                    "§7Production : §a" + b.type.rate(b.level) + " → " + b.type.rate(b.level + 1) + "/min",
-                    "", is.money >= cost ? "§aClic : améliorer" : "§cPas assez d'écus"),
-                    cost < 0 ? null : pl -> {
-                        String err = mgr().upgradeBuilding(is, b);
-                        pl.sendSystemMessage(err == null ? Msg.ok(b.type.label + " améliorée au niveau " + b.level + " !") : Msg.err(err));
-                        building(pl, bid);
-                    });
-            m.set(25, button(I_DEMOLISH, "Ramasser", RED, "§7La machine revient dans ton", "§7inventaire (elle garde son niveau).", "§7Son stock est vendu."),
-                    pl -> {
-                        long g = mgr().pickUp(pl, is, b);
-                        pl.sendSystemMessage(Msg.info(b.type.label + " ramassée" + (g > 0 ? " (stock vendu : " + Market.fmt(g) + " écus)." : ".")));
+                        mgr().pickUp(pl, is, b);
+                        pl.sendSystemMessage(Msg.info(t.label + " ramassée : elle est dans ton inventaire."));
                         pl.closeContainer();
                     });
-            // contenu de l'entrepôt
+            // contenu du stock
             int k = 0;
             for (Map.Entry<String, Long> e : b.storage.entrySet()) {
                 if (k >= 7 || e.getValue() <= 0) continue;
                 Item it = Market.item(e.getKey());
-                ItemStack s = item(it, it.getDescription().getString(), CREAM, "§7Stock : §f" + e.getValue(),
-                        "§7Prix : " + ecus(Market.price(e.getKey())) + " §7l'unité");
+                ItemStack s = item(it, it.getDescription().getString(), CREAM, "§7En stock : §f" + Market.fmt(e.getValue()),
+                        "§7Valeur : " + ecus(Market.price(e.getKey())) + " §7l'unité");
                 s.setCount((int) Math.max(1, Math.min(64, e.getValue())));
                 m.set(37 + k++, s);
             }
@@ -253,23 +257,35 @@ public final class KingdomMenus {
         });
     }
 
+    /** Ressources produites à ce niveau. */
+    private static String outputs(BuildingType t, int level) {
+        StringBuilder sb = new StringBuilder();
+        for (BuildingType.Output o : t.outputs) {
+            if (o.fromLevel() > level) continue;
+            if (sb.length() > 0) sb.append(", ");
+            sb.append(o.asItem().getDescription().getString());
+        }
+        return sb.toString();
+    }
+
     private static void harvest(ServerPlayer p, Island is, Building b) {
         int given = 0;
         for (Map.Entry<String, Long> e : b.storage.entrySet()) {
-            Item it = Market.item(e.getKey());
+            int max = Market.item(e.getKey()).getDefaultMaxStackSize();
             long left = e.getValue();
             while (left > 0) {
-                int n = (int) Math.min(left, it.getDefaultMaxStackSize());
-                ItemStack s = new ItemStack(it, n);
-                if (!p.getInventory().add(s)) { left -= (n - s.getCount()); given += n - s.getCount(); break; }
-                left -= n;
-                given += n;
+                int n = (int) Math.min(left, max);
+                ItemStack s = Market.stack(e.getKey(), n);
+                boolean all = p.getInventory().add(s);
+                int took = n - s.getCount();
+                left -= took; given += took;
+                if (!all) break;
             }
             e.setValue(left);
         }
         b.storage.values().removeIf(v -> v <= 0);
         mgr().data().setDirty();
-        p.sendSystemMessage(given > 0 ? Msg.ok(given + " ressources récoltées.") : Msg.err("Rien à récolter (ou inventaire plein)."));
+        p.sendSystemMessage(given > 0 ? Msg.ok(given + " ressources récupérées. Vends-les avec /sell ou /sellall.") : Msg.err("Rien à récupérer (ou inventaire plein)."));
     }
 
     // ---------- marché ----------
@@ -277,7 +293,7 @@ public final class KingdomMenus {
     public static void market(ServerPlayer p) {
         Island is = mgr().islandOf(p.getUUID());
         if (is == null) { start(p); return; }
-        Map<String, Long> totals = Market.totals(is);
+        Map<String, Long> totals = Market.inventoryTotals(p);
         IslandMenu.open(p, Page.LIST, "Marché de la capitale", m -> {
             int k = 0;
             long all = 0;
@@ -288,28 +304,21 @@ public final class KingdomMenus {
                 Item it = Market.item(e.getKey());
                 String id = e.getKey();
                 ItemStack s = item(it, it.getDescription().getString(), qty > 0 ? CREAM : GRAY,
-                        "§7Prix : " + ecus(e.getValue()) + " §7l'unité", "§7En stock : §f" + qty,
-                        qty > 0 ? "§aClic : vendre (" + Market.fmt(qty * e.getValue()) + " écus)" : "§8Rien à vendre");
+                        "§7Valeur : " + ecus(e.getValue()) + " §7l'unité", "§7Dans ton inventaire : §f" + qty,
+                        qty > 0 ? "§aClic : vendre (" + Market.fmt(qty * e.getValue()) + " écus)" : "§8Tu n'en as pas");
                 s.setCount((int) Math.max(1, Math.min(64, qty)));
-                m.set(LIST[k++], s, qty > 0 ? pl -> { sellOne(pl, is, id); market(pl); } : null);
+                m.set(LIST[k++], s, qty > 0 ? pl -> {
+                    long g = Market.sellInventory(pl, is, id);
+                    mgr().data().setDirty();
+                    pl.sendSystemMessage(Msg.ok("Vendu pour " + Market.fmt(g) + " écus."));
+                    market(pl);
+                } : null);
             }
             backBtn(m, KingdomMenus::main);
-            m.set(49, glow(button(I_SELL_ALL, "Tout vendre", GOLD, "§7Entrepôts : " + ecus(all), "§7+ les ressources de ton inventaire.", "", "§aClic : vendre")),
-                    pl -> { cmd(pl, "royaume vendre"); market(pl); });
+            m.set(49, glow(button(I_SELL_ALL, "Tout vendre", GOLD, "§7Ton inventaire vaut " + ecus(all) + "§7.", "", "§aClic : tout vendre §8(/sellall)")),
+                    pl -> { cmd(pl, "sellall"); market(pl); });
             closeBtn(m, 53);
         });
-    }
-
-    private static void sellOne(ServerPlayer p, Island is, String id) {
-        long qty = 0;
-        for (Building b : is.buildings) {
-            Long v = b.storage.remove(id);
-            if (v != null) qty += v;
-        }
-        long gain = qty * Market.price(id);
-        is.earn(gain);
-        mgr().data().setDirty();
-        p.sendSystemMessage(Msg.ok("Vendu " + qty + " × " + Market.item(id).getDescription().getString() + " pour " + Market.fmt(gain) + " écus."));
     }
 
     // ---------- équipe ----------
@@ -370,36 +379,55 @@ public final class KingdomMenus {
         IslandMenu.open(p, Page.DOMAIN, "Améliorer le royaume", m -> {
             m.set(4, infoCard(is));
             closeBtn(m, 8);
+            String who = "§8Réservé au seigneur";
+            // terrain : seule la bordure s'écarte
             int sc = cfg.sizeCost(is.sizeLevel + 1);
             int r = mgr().radius(is), nr = sc < 0 ? r : cfg.radiusFor(is.sizeLevel + 1);
-            m.set(20, sc < 0 ? glow(button(I_EXPAND, "Île au maximum", GOLD, "§7Rayon : " + r + " blocs"))
-                    : button(I_EXPAND, "Agrandir l'île", GREEN, "§7Rayon : " + r + " → §a" + nr + " §7blocs",
-                    "§7Machines : " + cfg.machinesFor(is.sizeLevel) + " → §a" + cfg.machinesFor(is.sizeLevel + 1),
-                    "§7Prix : " + ecus(sc), "", owner ? (is.money >= sc ? "§aClic : agrandir" : "§cPas assez d'écus") : "§8Réservé au seigneur"),
+            m.set(20, sc < 0 ? glow(button(I_EXPAND, "Terrain au maximum", GOLD, "§7" + (2 * r + 1) + " × " + (2 * r + 1) + " blocs"))
+                    : button(I_EXPAND, "Agrandir le terrain", GREEN, "§7Niveau : §f" + is.sizeLevel + " §7→ §a" + (is.sizeLevel + 1),
+                    "§7Terrain : §f" + (2 * r + 1) + " × " + (2 * r + 1) + " §7→ §a" + (2 * nr + 1) + " × " + (2 * nr + 1) + " blocs",
+                    "§8La bordure s'écarte : à toi de bâtir !", "",
+                    "§7Prix : " + ecus(sc), owner ? (is.money >= sc ? "§aClic : agrandir" : "§cIl te manque " + Market.fmt(sc - is.money) + " écus") : who),
                     sc < 0 || !owner ? null : pl -> {
                         String err = mgr().upgradeSize(is);
-                        pl.sendSystemMessage(err == null ? Msg.ok("Ton île s'agrandit !") : Msg.err(err));
+                        pl.sendSystemMessage(err == null ? Msg.ok("Ton terrain s'agrandit : la bordure s'est écartée !") : Msg.err(err));
                         domain(pl);
                     });
-            m.set(22, button(is.open ? I_OPEN : I_CLOSED, is.open ? "Portes ouvertes" : "Portes fermées", is.open ? GREEN : RED,
-                    "§7Les autres joueurs " + (is.open ? "§apeuvent" : "§cne peuvent pas"), "§7visiter ton domaine.", "",
-                    owner ? "§eClic : changer" : "§8Réservé au seigneur"),
-                    owner ? pl -> { cmd(pl, is.open ? "royaume fermer" : "royaume ouvrir"); domain(pl); } : null);
+            // nombre de bâtiments
+            int bc = cfg.machinesCost(is.machineLevel + 1);
+            int bm = mgr().maxMachines(is);
+            m.set(22, bc < 0 ? glow(button(I_BUILD, "Bâtiments au maximum", GOLD, "§7" + bm + " bâtiments"))
+                    : button(I_BUILD, "Plus de bâtiments", GOLD, "§7Niveau : §f" + is.machineLevel + " §7→ §a" + (is.machineLevel + 1),
+                    "§7Bâtiments posés : §f" + is.buildings.size() + " / " + bm,
+                    "§7Limite : §f" + bm + " §7→ §a" + cfg.machinesFor(is.machineLevel + 1) + " bâtiments", "",
+                    "§7Prix : " + ecus(bc), owner ? (is.money >= bc ? "§aClic : améliorer" : "§cIl te manque " + Market.fmt(bc - is.money) + " écus") : who),
+                    bc < 0 || !owner ? null : pl -> {
+                        String err = mgr().upgradeMachines(is);
+                        pl.sendSystemMessage(err == null ? Msg.ok("Tu peux poser plus de bâtiments !") : Msg.err(err));
+                        domain(pl);
+                    });
+            // membres
             int mc = cfg.membersCost(is.memberLevel + 1);
-            m.set(24, mc < 0 ? glow(button(I_TEAM, "Équipe au maximum", GOLD, "§7" + mgr().maxMembers(is) + " membres"))
-                    : button(I_TEAM, "Agrandir l'équipe", BLUE, "§7" + mgr().maxMembers(is) + " → §a" + cfg.membersFor(is.memberLevel + 1) + " §7membres",
-                    "§7Prix : " + ecus(mc), "", owner ? (is.money >= mc ? "§aClic : améliorer" : "§cPas assez d'écus") : "§8Réservé au seigneur"),
+            m.set(24, mc < 0 ? glow(button(I_TEAM, "Cour au maximum", GOLD, "§7" + mgr().maxMembers(is) + " membres"))
+                    : button(I_TEAM, "Agrandir la cour", BLUE, "§7Niveau : §f" + is.memberLevel + " §7→ §a" + (is.memberLevel + 1),
+                    "§7Membres : §f" + is.members.size() + " / " + mgr().maxMembers(is),
+                    "§7Limite : §f" + mgr().maxMembers(is) + " §7→ §a" + cfg.membersFor(is.memberLevel + 1) + " membres", "",
+                    "§7Prix : " + ecus(mc), owner ? (is.money >= mc ? "§aClic : améliorer" : "§cIl te manque " + Market.fmt(mc - is.money) + " écus") : who),
                     mc < 0 || !owner ? null : pl -> {
                         String err = mgr().upgradeMembers(is);
                         pl.sendSystemMessage(err == null ? Msg.ok("Ta cour peut accueillir plus de monde !") : Msg.err(err));
                         domain(pl);
                     });
+            m.set(39, button(is.open ? I_OPEN : I_CLOSED, is.open ? "Portes ouvertes" : "Portes fermées", is.open ? GREEN : RED,
+                    "§7Les autres joueurs " + (is.open ? "§apeuvent" : "§cne peuvent pas"), "§7visiter ton domaine.", "",
+                    owner ? "§eClic : changer" : who),
+                    owner ? pl -> { cmd(pl, is.open ? "royaume fermer" : "royaume ouvrir"); domain(pl); } : null);
             if (owner) {
-                m.set(40, button(I_DEMOLISH, "Abandonner le royaume", RED, "§7Supprime définitivement", "§7ton royaume."),
+                m.set(41, button(I_DEMOLISH, "Abandonner le royaume", RED, "§7Supprime définitivement", "§7ton royaume."),
                         pl -> confirm(pl, "Abandonner le royaume ?", button(I_DEMOLISH, "Attention !", RED, "§7Domaine, bâtiments et trésor", "§7seront perdus §cdéfinitivement§7."),
                                 ok -> { ok.closeContainer(); cmd(ok, "royaume supprimer"); cmd(ok, "royaume supprimer confirmer"); }, KingdomMenus::domain));
             } else {
-                m.set(40, button(I_BACK, "Quitter le royaume", RED, "§7Quitter le royaume de " + is.ownerName() + "."),
+                m.set(41, button(I_BACK, "Quitter le royaume", RED, "§7Quitter le royaume de " + is.ownerName() + "."),
                         pl -> confirm(pl, "Quitter le royaume ?", button(I_BACK, "Quitter", RED),
                                 ok -> { ok.closeContainer(); cmd(ok, "royaume quitter"); }, KingdomMenus::domain));
             }
