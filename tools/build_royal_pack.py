@@ -13,6 +13,7 @@ from PIL import Image
 sys.path.insert(0, os.path.dirname(__file__))
 from royal_ui import FONT, OX, OY, W, H, TILE_W, TILE_H
 import royal_v8
+import machines
 
 PACK = "/home/claude/rp/royaumes"
 REPO = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
@@ -66,6 +67,72 @@ def build_fonts(tile_providers):
 def build_lang():
     for lang in ("fr_fr", "fr_ca", "en_us", "en_gb"):
         write_json(f"{PACK}/assets/minecraft/lang/{lang}.json", {"container.inventory": ""})
+
+def add_paper_models(pairs):
+    """Ajoute (custom_model_data, modèle) au papier, pour les anciens et nouveaux formats de modèles d'objets."""
+    mp = f"{PACK}/assets/minecraft/models/item/paper.json"
+    m = json.load(open(mp))
+    have = {o["predicate"]["custom_model_data"] for o in m["overrides"]}
+    for cmd, model in pairs:
+        if cmd not in have: m["overrides"].append({"predicate": {"custom_model_data": cmd}, "model": model})
+        else:
+            for o in m["overrides"]:
+                if o["predicate"]["custom_model_data"] == cmd: o["model"] = model
+    m["overrides"].sort(key=lambda o: o["predicate"]["custom_model_data"])
+    write_json(mp, m)
+    ip = f"{PACK}/assets/minecraft/items/paper.json"
+    it = json.load(open(ip))
+    ent = {e["threshold"]: e for e in it["model"]["entries"]}
+    for cmd, model in pairs:
+        ent[cmd] = {"threshold": cmd, "model": {"type": "minecraft:model", "model": model}}
+    it["model"]["entries"] = [ent[k] for k in sorted(ent)]
+    write_json(ip, it)
+
+def build_machines():
+    table = machines.export()
+    add_paper_models(machines.model_overrides(table))
+    lines = []
+    for name, info in table.items():
+        parts = ", ".join("new Part(%d, %sf, %sf, %sf, \"%s\", %s)" % (info["cmd"]["parts"][i], p["offset"][0], p["offset"][1], p["offset"][2],
+                                                                     p["anim"], "true" if p["bright"] else "false")
+                          for i, p in enumerate(info["parts"]))
+        lines.append((name, info["cmd"]["item"], info["cmd"]["base"], parts))
+    sw = lambda f: "\n".join('            case "%s" -> %s;' % (n, f(x)) for n, *x in lines)
+    src = f'''package fr.cobbleskyblock.islands;
+
+/** Généré par tools/build_royal_pack.py (modèles de tools/machines.py) — ne pas modifier à la main. */
+final class MachineModels {{
+    private MachineModels() {{}}
+
+    /** Pièce animée : modèle, décalage (1/16 de bloc), animation, pleine lumière. */
+    record Part(int cmd, float ox, float oy, float oz, String anim, boolean bright) {{}}
+
+    /** Objet complet (icône, objet à poser). */
+    static int item(String id) {{
+        return switch (id) {{
+{sw(lambda x: x[0])}
+            default -> 0;
+        }};
+    }}
+
+    /** Socle immobile. */
+    static int base(String id) {{
+        return switch (id) {{
+{sw(lambda x: x[1])}
+            default -> 0;
+        }};
+    }}
+
+    static Part[] parts(String id) {{
+        return switch (id) {{
+{sw(lambda x: "new Part[]{" + x[2] + "}")}
+            default -> new Part[0];
+        }};
+    }}
+}}
+'''
+    with open(f"{REPO}/cobbleislands/src/main/java/fr/cobbleskyblock/islands/MachineModels.java", "w", encoding="utf-8") as f:
+        f.write(src)
 
 def build_blank_item():
     Image.new("RGBA", (16, 16), (0, 0, 0, 0)).save(f"{NS}/textures/item/ui/blank.png")
@@ -147,5 +214,6 @@ if __name__ == "__main__":
     build_fonts(tiles)
     build_lang()
     build_blank_item()
+    build_machines()
     build_java()
     print("pack :", zip_pack())

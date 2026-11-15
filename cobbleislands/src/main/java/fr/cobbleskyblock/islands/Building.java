@@ -2,41 +2,37 @@ package fr.cobbleskyblock.islands;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.StringTag;
+import net.minecraft.nbt.Tag;
 
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
-/** Un bâtiment posé sur un domaine, avec son entrepôt virtuel. */
+/**
+ * Une machine posée sur une île : un bloc de barrière (collision, clic) et des entités
+ * d'affichage (le modèle 3D et ses pièces animées). Son stock est virtuel.
+ */
 public class Building {
-    /** Taille commune des bâtiments (en blocs). */
-    public static final int SIZE_X = 9, SIZE_Y = 9, SIZE_Z = 9;
-    /** Position du pupitre (bloc d'accès au menu du bâtiment) dans la structure. */
-    public static final int LECTERN_X = 4, LECTERN_Y = 0, LECTERN_Z = 8;
-
     public final int id;
     public final BuildingType type;
     public int level = 1;
-    /** Coin nord-ouest au niveau du sol. */
-    public final BlockPos origin;
+    public final BlockPos pos;
+    /** Orientation (degrés, 0 = façade vers le sud). */
+    public final float yaw;
     public final Map<String, Long> storage = new LinkedHashMap<>();
     public double progress;
+    /** Entités d'affichage : [0] = socle, puis les pièces animées. */
+    public final List<UUID> entities = new ArrayList<>();
 
-    public Building(int id, BuildingType type, BlockPos origin) {
+    public Building(int id, BuildingType type, BlockPos pos, float yaw) {
         this.id = id;
         this.type = type;
-        this.origin = origin;
-    }
-
-    public BlockPos lectern() { return origin.offset(LECTERN_X, LECTERN_Y, LECTERN_Z); }
-
-    public boolean contains(BlockPos p, int margin) {
-        return p.getX() >= origin.getX() - margin && p.getX() < origin.getX() + SIZE_X + margin
-                && p.getZ() >= origin.getZ() - margin && p.getZ() < origin.getZ() + SIZE_Z + margin
-                && p.getY() >= origin.getY() - 2 && p.getY() < origin.getY() + SIZE_Y + 2;
-    }
-
-    public boolean overlaps(BlockPos otherOrigin) {
-        return Math.abs(otherOrigin.getX() - origin.getX()) < SIZE_X + 1 && Math.abs(otherOrigin.getZ() - origin.getZ()) < SIZE_Z + 1;
+        this.pos = pos;
+        this.yaw = yaw;
     }
 
     public long stored() {
@@ -45,29 +41,39 @@ public class Building {
         return n;
     }
 
+    public boolean full() { return stored() >= type.capacity(level); }
+
     public CompoundTag save() {
         CompoundTag t = new CompoundTag();
         t.putInt("id", id);
         t.putString("type", type.name());
         t.putInt("level", level);
-        t.putInt("x", origin.getX());
-        t.putInt("y", origin.getY());
-        t.putInt("z", origin.getZ());
+        t.putInt("x", pos.getX());
+        t.putInt("y", pos.getY());
+        t.putInt("z", pos.getZ());
+        t.putFloat("yaw", yaw);
         t.putDouble("progress", progress);
         CompoundTag st = new CompoundTag();
         storage.forEach(st::putLong);
         t.put("storage", st);
+        ListTag ents = new ListTag();
+        for (UUID u : entities) ents.add(StringTag.valueOf(u.toString()));
+        t.put("entities", ents);
         return t;
     }
 
     public static Building load(CompoundTag t) {
         BuildingType type = BuildingType.byName(t.getString("type"));
         if (type == null) return null;
-        Building b = new Building(t.getInt("id"), type, new BlockPos(t.getInt("x"), t.getInt("y"), t.getInt("z")));
+        Building b = new Building(t.getInt("id"), type, new BlockPos(t.getInt("x"), t.getInt("y"), t.getInt("z")), t.getFloat("yaw"));
         b.level = Math.max(1, t.getInt("level"));
         b.progress = t.getDouble("progress");
         CompoundTag st = t.getCompound("storage");
         for (String k : st.getAllKeys()) b.storage.put(k, st.getLong(k));
+        ListTag ents = t.getList("entities", Tag.TAG_STRING);
+        for (int i = 0; i < ents.size(); i++) {
+            try { b.entities.add(UUID.fromString(ents.getString(i))); } catch (IllegalArgumentException ignored) {}
+        }
         return b;
     }
 }

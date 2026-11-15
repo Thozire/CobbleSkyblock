@@ -11,7 +11,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-/** Un royaume : son domaine sur la grille, son équipe, son trésor et ses bâtiments. */
+/** Un royaume : son île sur la grille, son équipe, son trésor et ses machines. */
 public class Island {
     public final int id;
     public UUID owner;
@@ -45,6 +45,11 @@ public class Island {
 
     public Building building(int bid) {
         for (Building b : buildings) if (b.id == bid) return b;
+        return null;
+    }
+
+    public Building machineAt(net.minecraft.core.BlockPos pos) {
+        for (Building b : buildings) if (b.pos.equals(pos)) return b;
         return null;
     }
 

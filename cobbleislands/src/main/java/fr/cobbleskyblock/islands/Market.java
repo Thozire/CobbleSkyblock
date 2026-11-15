@@ -28,6 +28,9 @@ public final class Market {
         PRICES.put("minecraft:raw_copper", 5);
         PRICES.put("minecraft:raw_iron", 9);
         PRICES.put("minecraft:raw_gold", 16);
+        PRICES.put("minecraft:copper_ingot", 10);
+        PRICES.put("minecraft:iron_ingot", 18);
+        PRICES.put("minecraft:gold_ingot", 32);
     }
 
     public static int price(String item) { return PRICES.getOrDefault(item, 0); }
