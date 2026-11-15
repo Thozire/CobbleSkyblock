@@ -22,7 +22,7 @@ public class IslandData extends SavedData {
 
     public static IslandData get(MinecraftServer server) {
         return server.overworld().getDataStorage().computeIfAbsent(
-                new SavedData.Factory<>(IslandData::new, IslandData::load, null), "cobbleislands");
+                new SavedData.Factory<>(IslandData::new, IslandData::load, null), "royaumes");
     }
 
     public static IslandData load(CompoundTag tag, HolderLookup.Provider registries) {
