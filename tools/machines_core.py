@@ -17,7 +17,7 @@ from PIL import Image, ImageDraw
 MC = os.environ.get("MC_ASSETS", "/home/claude/mcassets/assets/minecraft") + "/textures/"
 PACK = os.environ.get("ROYAUMES_PACK", "/home/claude/rp/royaumes")
 NS = PACK + "/assets/cobbleislands"
-VERSION = 3            # version des modèles : les machines déjà posées sont reconstruites si elle change
+VERSION = 4            # version des modèles : les machines déjà posées sont reconstruites si elle change
 TICKS_PER_STEP = 5     # le serveur anime toutes les 5 ticks
 
 # ================================================================ textures peintes (16x16)
@@ -289,16 +289,20 @@ class Model:
 
 def _split(e):
     """Découpe une boîte aux multiples de 16 (repère de dessin) ; ne garde que les faces extérieures."""
-    if not e["tile"]: return [e]
     cuts = []
     for k in range(3):
         a, b = e["from"][k], e["to"][k]
         pts = [a]
-        g = math.floor(a / 16) * 16 + 16
-        while g < b - 1e-6:
-            pts.append(g); g += 16
+        if e["tile"]:
+            g = math.floor(a / 16) * 16 + 16
+            while g < b - 1e-6:
+                pts.append(g); g += 16
+        elif b - a > 16 + 1e-6 and not e["uv"]:      # boîte libre trop longue : tronçons égaux de 16 au plus
+            n = math.ceil((b - a) / 16 - 1e-6)
+            pts += [a + (b - a) * i / n for i in range(1, n)]
         pts.append(b)
         cuts.append(pts)
+    if all(len(c) == 2 for c in cuts): return [e]
     out = []
     for i in range(len(cuts[0]) - 1):
         for j in range(len(cuts[1]) - 1):
@@ -332,6 +336,8 @@ def _face_uv(e, face):
         elif face == "west": h = (lz0, lz1); v = (16 - ly1, 16 - ly0)
         elif face == "up": h = (lx0, lx1); v = (lz0, lz1)
         else: h = (lx0, lx1); v = (16 - lz1, 16 - lz0)
+    elif e["tex"][face].endswith("_log_top"):
+        h = (0, 16); v = (0, 16)                 # bout de rondin : les cernes entiers, jamais un coin de la texture
     else:
         w = {"north": x1 - x0, "south": x1 - x0, "east": z1 - z0, "west": z1 - z0, "up": x1 - x0, "down": x1 - x0}[face]
         hgt = (z1 - z0) if face in ("up", "down") else (y1 - y0)
@@ -475,7 +481,8 @@ def ring(m, c, r_in, r_out, a0, a1, tex, axis="x", n=16):
     """Couronne à n côtés (8 ou 16) autour de l'axe `axis`, entre a0 et a1 le long de cet axe."""
     seg = math.tan(math.pi / n) * r_out
     angles = (0, 45) if n == 8 else (0, 22.5, 45, -22.5)
-    for ang in angles:
+    for gi, ang in enumerate(angles):
+        a0, a1 = a0 + 0.02, a1 - 0.02
         for sgn in (1, -1):
             for flip in (0, 1):
                 # segment « haut/bas » (flip=0) ou « avant/arrière » (flip=1)
@@ -496,15 +503,17 @@ def disc(m, c, r, a0, a1, tex, axis="x", face_tex=None):
     k = r * math.tan(math.pi / 8)
     tx = tex if face_tex is None else None
     for ang in (0, 45):
+        a0, a1 = a0 + 0.03, a1 - 0.03
+        b0, b1 = a0 + 0.015, a1 - 0.015
         if axis == "x":
             f, t = (a0, c[1] - r, c[2] - k), (a1, c[1] + r, c[2] + k)
-            f2, t2 = (a0, c[1] - k, c[2] - r), (a1, c[1] + k, c[2] + r)
+            f2, t2 = (b0, c[1] - k, c[2] - r), (b1, c[1] + k, c[2] + r)
         elif axis == "z":
             f, t = (c[0] - r, c[1] - k, a0), (c[0] + r, c[1] + k, a1)
-            f2, t2 = (c[0] - k, c[1] - r, a0), (c[0] + k, c[1] + r, a1)
+            f2, t2 = (c[0] - k, c[1] - r, b0), (c[0] + k, c[1] + r, b1)
         else:
             f, t = (c[0] - r, a0, c[2] - k), (c[0] + r, a1, c[2] + k)
-            f2, t2 = (c[0] - k, a0, c[2] - r), (c[0] + k, a1, c[2] + r)
+            f2, t2 = (c[0] - k, b0, c[2] - r), (c[0] + k, b1, c[2] + r)
         m.box(f, t, tex, rot=(axis, ang, c) if ang else None, tile=False)
         m.box(f2, t2, tex, rot=(axis, ang, c) if ang else None, tile=False)
 

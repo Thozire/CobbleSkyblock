@@ -5,7 +5,7 @@ final class MachineModels {
     private MachineModels() {}
 
     /** Version des modèles : un bâtiment posé avec une autre version est reconstruit. */
-    static final int VERSION = 3;
+    static final int VERSION = 4;
 
     /**
      * Pièce d'un bâtiment : modèle, pivot (repère de dessin, 1/16 de bloc), pleine lumière, vacillement
@@ -22,10 +22,9 @@ final class MachineModels {
 
     private static final Part[] SCIERIE = {
             new Part(7320, 42f, 18f, 24f, false, 0f, new float[]{4f, 0f, 0f, 0f, 0f, -90f, 1f, 1f, 1f, 4f, 0f, 0f, 0f, 0f, -180f, 1f, 1f, 1f, 4f, 0f, 0f, 0f, 0f, -270f, 1f, 1f, 1f, 4f, 0f, 0f, 0f, 0f, -360f, 1f, 1f, 1f}),   // roue
-            new Part(7321, 18f, 14f, 24f, false, 0f, new float[]{1f, 0f, 2.4f, 0f, 1f, 0f, 1f, 1f, 1f, 1f, 0f, -1.4f, 0f, 1f, 0f, 1f, 1f, 1f}),   // scie
+            new Part(7321, 18f, 14f, 24f, false, 0f, new float[]{1f, 0f, 3.4f, 0f, 1f, 0f, 1f, 1f, 1f, 1f, 0f, 0f, 0f, 1f, 0f, 1f, 1f, 1f}),   // scie
             new Part(7322, 18f, 13.5f, 20f, false, 0f, new float[]{22f, 0f, 0f, 8f, 1f, 0f, 1f, 1f, 1f, 2f, 0f, 0f, 8f, 1f, 0f, 1f, 1f, 1f, 6f, 0f, 0f, 0f, 1f, 0f, 1f, 1f, 1f, 2f, 0f, 0f, 0f, 1f, 0f, 1f, 1f, 1f}),   // grume
             new Part(7323, 18f, 45.5f, 3.5f, false, 0f, new float[]{4f, 0f, 0f, 0f, 1f, 10f, 1f, 1f, 1f, 3f, 0f, 0f, 0f, 1f, -4f, 1f, 1f, 1f, 4f, 0f, 0f, 0f, 1f, 7f, 1f, 1f, 1f, 5f, 0f, 0f, 0f, 1f, -10f, 1f, 1f, 1f}),   // fanion
-            new Part(7324, 24f, 24f, 24f, true, 0f, new float[]{}),   // lumiere
     };
 
     private static final Emitter[] SCIERIE_FX = {
