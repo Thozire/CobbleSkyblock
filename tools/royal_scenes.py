@@ -301,4 +301,62 @@ def scene_capital(w, h):
         p.hline(cx - 1 - (y - base) // 2, cx + 1 + (y - base) // 2, y, DIRT[3])
     return p.img
 
-SCENES = {"kingdom": scene_kingdom, "build": scene_build, "forge": scene_forge, "court": scene_court, "capital": scene_capital}
+# ---------------------------------------------------------------- 6. Récupérer le stock (entrepôt)
+def scene_stock(w, h):
+    p = Pix(w, h)
+    for x in range(w):                                    # mur de planches, lumière chaude au centre
+        for y in range(h):
+            v = 0.75 - abs(x - w * 0.5) / w * 0.9 + (0.08 if (x // 7) % 2 else 0)
+            p.px(x, y, pick([WOOD[1], WOOD[2], WOOD[3], WOOD[4]], v, x, y))
+        if x % 7 == 0: p.vline(x, 0, h - 1, WOOD[1])
+    glow(p, w // 2, 6, 14, (255, 210, 120), 60)
+    gy = h - 4
+    p.rect(0, gy, w - 1, h - 1, WOOD[2]); p.hline(0, w - 1, gy, WOOD[5]); p.hline(0, w - 1, h - 1, WOOD[0])
+    # pile de rondins
+    for row, n in enumerate((4, 3, 2)):
+        for i in range(n):
+            cx, cy = 6 + row * 3.5 + i * 7, gy - 4 - row * 6
+            ellipse(p, cx, cy, 3.4, 3.4, [WOOD[1], WOOD[3], WOOD[5], WOOD[6]]); ellipse(p, cx, cy, 1.4, 1.4, [WOOD[3], WOOD[4]])
+    # sacs de grain
+    for sx, sh in ((36, 11), (44, 9)):
+        ellipse(p, sx, gy - sh / 2, 4.2, sh / 2 + 1, [PARCH[0], PARCH[1], PARCH[3], PARCH[5]])
+        p.hline(int(sx - 2), int(sx + 2), int(gy - sh), PARCH[1])
+    # grand coffre ouvert, débordant d'or
+    cx = 58
+    p.rect(cx, gy - 9, cx + 20, gy - 1, WOOD[3]); p.hline(cx, cx + 20, gy - 9, WOOD[5]); p.hline(cx, cx + 20, gy - 1, WOOD[1])
+    for x in (cx, cx + 20): p.vline(x, gy - 9, gy - 1, IRON[2])
+    for x in (cx + 6, cx + 14): p.vline(x, gy - 9, gy - 1, IRON[3])
+    p.rect(cx + 1, gy - 17, cx + 19, gy - 14, WOOD[2]); p.hline(cx + 1, cx + 19, gy - 17, WOOD[5])       # couvercle relevé
+    for x in range(cx + 2, cx + 19):
+        hh = 2 + int(2 * abs(math.sin(x * 0.9)))
+        for y in range(gy - 9 - hh, gy - 9): p.px(x, y, pick([GOLD[2], GOLD[4], GOLD[5]], 1 - (y - (gy - 9 - hh)) / hh, x, y))
+    for (x, y) in ((cx + 5, gy - 13), (cx + 12, gy - 14), (cx + 16, gy - 12)): p.px(x, y, (255, 255, 240))
+    p.rect(cx + 9, gy - 7, cx + 11, gy - 4, GOLD[4]); p.px(cx + 9, gy - 7, GOLD[6])
+    # lingots et tonneau
+    for i, (x, y) in enumerate(((82, gy - 2), (86, gy - 2), (84, gy - 4))):
+        p.rect(x, y, x + 3, y + 1, IRON[4] if i != 2 else GOLD[4]); p.hline(x, x + 3, y, IRON[5] if i != 2 else GOLD[6])
+    return p.img
+
+# ---------------------------------------------------------------- 7. Ramasser (charrette)
+def scene_cart(w, h):
+    p = Pix(w, h)
+    vgrad(p, 0, 0, w - 1, h - 1, [SKY[2], SKY[3], SKY[4]])
+    cloud(p, 2, 2, 9)
+    gy = h - 4
+    for x in range(w):
+        p.vline(x, gy, h - 1, LEAF[2]); p.px(x, gy, LEAF[4]); p.px(x, h - 1, DIRT[2])
+    # plateau et ridelles
+    p.rect(3, gy - 7, 20, gy - 5, WOOD[3]); p.hline(3, 20, gy - 7, WOOD[5]); p.hline(3, 20, gy - 5, WOOD[1])
+    p.vline(3, gy - 11, gy - 7, WOOD[2]); p.vline(20, gy - 11, gy - 7, WOOD[2])
+    for i in range(5): p.px(20 + i, gy - 6 - i // 2, WOOD[2])                 # timon
+    # caisse du bâtiment démonté
+    p.rect(6, gy - 15, 17, gy - 8, WOOD[4]); p.hline(6, 17, gy - 15, WOOD[6]); p.hline(6, 17, gy - 8, WOOD[2])
+    p.vline(6, gy - 15, gy - 8, WOOD[2]); p.vline(17, gy - 15, gy - 8, WOOD[1])
+    for k in range(6): p.px(8 + k, gy - 14 + k, WOOD[2])
+    for i in range(4): p.hline(8 + i, 15 - i, gy - 16 - i, RED[4] if i < 2 else RED[3])   # petit toit
+    # roues
+    for cx in (7, 17):
+        ellipse(p, cx, gy - 2, 3.3, 3.3, [WOOD[0], WOOD[1], WOOD[3], WOOD[5]]); p.px(cx, gy - 2, IRON[5])
+    return p.img
+
+SCENES = {"stock": scene_stock, "cart": scene_cart, "kingdom": scene_kingdom, "build": scene_build, "forge": scene_forge, "court": scene_court, "capital": scene_capital}

@@ -247,7 +247,27 @@ def icon_scroll_seal():
     L.rect(4, 3, 6, 6, RED[2]); L.px(5, 2, RED[5])
     return L
 
-ICON_FUNCS = {"crown": icon_crown, "coins": icon_coins, "hourglass": icon_hourglass, "trophy": icon_trophy, "people": icon_people}
+def icon_chest():
+    L = layer(14, 12)
+    vgrad(L, 0, 4, 13, 11, [WOOD[5], WOOD[4], WOOD[3], WOOD[2]])
+    vgrad(L, 0, 0, 13, 4, [WOOD[6], WOOD[5], WOOD[4]])
+    L.hline(0, 13, 4, WOOD[1]); L.hline(0, 13, 11, WOOD[1])
+    for x in (0, 13): L.vline(x, 0, 11, IRON[2])
+    for x in (3, 10): L.vline(x, 0, 11, IRON[3])
+    L.rect(6, 3, 7, 6, GOLD[4]); L.px(6, 3, GOLD[6]); L.px(7, 6, GOLD[2])
+    return L
+
+def icon_arrow():
+    L = layer(13, 13)
+    rows = ["......#......", ".....###.....", "....#####....", "...#######...", "..#########..", ".###########.", "....#####....",
+            "....#####....", "....#####....", "....#####....", "....#####....", "....#####...."]
+    G = [(30, 96, 40), (60, 150, 60), (110, 200, 90), (180, 240, 150)]
+    for y, r in enumerate(rows):
+        for x, ch in enumerate(r):
+            if ch == "#": L.px(x, y, G[3] if x < 5 and y > 5 else G[2] if x < 7 else G[1])
+    return L
+
+ICON_FUNCS = {"chest": icon_chest, "arrow": icon_arrow, "crown": icon_crown, "coins": icon_coins, "hourglass": icon_hourglass, "trophy": icon_trophy, "people": icon_people}
 
 def icon(name):
     return ICON_FUNCS[name]()

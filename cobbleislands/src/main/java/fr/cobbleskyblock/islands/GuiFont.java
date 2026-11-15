@@ -6,6 +6,8 @@ final class GuiFont {
 
     /** Glyphes des tuiles du fond du menu principal (haut-gauche, haut-droit, bas-gauche, bas-droit). */
     static final String MAIN_TILES = "\ue100\ue101\ue102\ue103";
+    /** Idem pour la page d'un bâtiment. */
+    static final String BUILDING_TILES = "\ue104\ue105\ue106\ue107";
     static final int TILE_W = 220, CANVAS_X = -132;
     /** Espacements : NEG[i] recule de 2^i pixels, POS[i] avance de 2^i pixels. */
     static final String NEG = "\uf801\uf802\uf803\uf804\uf805\uf806\uf807\uf808\uf809\uf80a";

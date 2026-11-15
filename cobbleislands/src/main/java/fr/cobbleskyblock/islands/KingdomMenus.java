@@ -207,18 +207,24 @@ public final class KingdomMenus {
         if (b == null) { buildings(p); return; }
         BuildingType t = b.type;
         int cap = t.capacity(b.level);
-        IslandMenu.open(p, Page.BUILDING, t.label + " — niveau " + b.level, m -> {
-            m.set(4, glow(button(t.icon(), t.label, GOLD, "§7Niveau : §f" + b.level + "/" + BuildingType.MAX_LEVEL,
-                    "§7Production : §a" + t.rate(b.level) + " /min", "§7Stock : §f" + Market.fmt(b.stored()) + " / " + Market.fmt(cap) + (b.full() ? " §c(plein !)" : ""),
-                    "§7Produit : §f" + outputs(t, b.level))));
-            closeBtn(m, 8);
-            m.set(20, button(I_HARVEST, "Récupérer le stock", GREEN, "§7Met tout le stock du bâtiment", "§7dans ton inventaire.", "",
+        long value = 0;
+        for (Map.Entry<String, Long> e : b.storage.entrySet()) value += e.getValue() * Market.price(e.getKey());
+        int cost = t.nextCost(b.level);
+        Component title = RoyalGui.buildingTitle(
+                b.level + " / " + BuildingType.MAX_LEVEL,
+                "+" + t.rate(b.level) + " / min",
+                Market.fmt(b.stored()) + " / " + Market.fmt(cap),
+                Market.fmt(value) + " écus",
+                cost < 0 ? "Maximum" : Market.fmt(cost) + " écus",
+                t.label);
+        IslandMenu.open(p, title, m -> {
+            zone(m, 0, 1, 0, 8, button(I_BLANK, "Récupérer le stock", GREEN, "§7Met tout le stock du bâtiment", "§7dans ton inventaire.", "",
+                    "§7Stock : §f" + Market.fmt(b.stored()) + " / " + Market.fmt(cap) + (b.full() ? " §c(plein !)" : ""),
                     "§7Vends ensuite avec §e/sell §7ou §e/sellall§7."),
                     pl -> { harvest(pl, is, b); building(pl, bid); });
-            int cost = t.nextCost(b.level);
             if (cost < 0) {
-                m.set(22, glow(button(I_UPGRADE, "Niveau maximum", GOLD, "§7Ce bâtiment est au sommet !",
-                        "§7Production : §a" + t.rate(b.level) + " /min", "§7Stock max : §f" + Market.fmt(cap))));
+                zone(m, 2, 3, 0, 3, button(I_BLANK, "Niveau maximum", GOLD, "§7Ce bâtiment est au sommet !",
+                        "§7Production : §a" + t.rate(b.level) + " /min", "§7Stock max : §f" + Market.fmt(cap)), null);
             } else {
                 int nl = b.level + 1;
                 List<String> lore = new ArrayList<>();
@@ -230,30 +236,31 @@ public final class KingdomMenus {
                 lore.add("");
                 lore.add("§7Prix : " + ecus(cost));
                 lore.add(is.money >= cost ? "§aClic : améliorer" : "§cIl te manque " + Market.fmt(cost - is.money) + " écus");
-                m.set(22, button(I_UPGRADE, "Améliorer au niveau " + nl, GREEN, lore.toArray(new String[0])),
+                zone(m, 2, 3, 0, 3, button(I_BLANK, "Améliorer au niveau " + nl, GREEN, lore.toArray(new String[0])),
                         pl -> {
                             String err = mgr().upgradeBuilding(is, b);
                             pl.sendSystemMessage(err == null ? Msg.ok(t.label + " améliorée au niveau " + b.level + " !") : Msg.err(err));
                             building(pl, bid);
                         });
             }
-            m.set(24, button(I_DEMOLISH, "Ramasser le bâtiment", RED, "§7Le bâtiment revient dans ton", "§7inventaire et garde son niveau.", "§7Son stock t'est rendu aussi."),
+            zone(m, 2, 3, 5, 8, button(I_BLANK, "Ramasser le bâtiment", RED, "§7Le bâtiment revient dans ton", "§7inventaire et garde son niveau.", "§7Son stock t'est rendu aussi."),
                     pl -> {
                         mgr().pickUp(pl, is, b);
                         pl.sendSystemMessage(Msg.info(t.label + " ramassée : elle est dans ton inventaire."));
                         pl.closeContainer();
                     });
-            // contenu du stock
+            // contenu du stock : la rangée de cases dessinée (ligne 4)
             int k = 0;
             for (Map.Entry<String, Long> e : b.storage.entrySet()) {
-                if (k >= 7 || e.getValue() <= 0) continue;
+                if (k >= 9 || e.getValue() <= 0) continue;
                 Item it = Market.item(e.getKey());
                 ItemStack s = item(it, it.getDescription().getString(), CREAM, "§7En stock : §f" + Market.fmt(e.getValue()),
                         "§7Valeur : " + ecus(Market.price(e.getKey())) + " §7l'unité");
                 s.setCount((int) Math.max(1, Math.min(64, e.getValue())));
-                m.set(37 + k++, s);
+                m.set(36 + k++, s);
             }
-            backBtn(m, KingdomMenus::buildings);
+            m.set(45, button(I_BLANK, "Retour", CREAM, "§7Revenir à la liste des bâtiments"), KingdomMenus::buildings);
+            m.set(53, button(I_BLANK, "Fermer", RED), ServerPlayer::closeContainer);
         });
     }
 

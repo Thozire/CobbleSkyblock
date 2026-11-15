@@ -32,8 +32,15 @@ def write_json(path, obj):
     with open(path, "w", encoding="utf-8") as f:
         json.dump(obj, f, ensure_ascii=False, indent=1)
 
+PAGES = ["main", "building"]          # une page = 4 tuiles ; glyphes E100+4i … E103+4i
+
 def build_tiles():
-    img = royal_v8.render()
+    out = []
+    for i, page in enumerate(PAGES): out += page_tiles(page, [chr(0xE100 + 4 * i + k) for k in range(4)])
+    return out
+
+def page_tiles(page, TILE_CHARS):
+    img = royal_v8.render(page)
     assert img.size == (W, H)
     out = []
     os.makedirs(f"{NS}/textures/font", exist_ok=True)
@@ -43,7 +50,7 @@ def build_tiles():
             # Minecraft calcule l'avance d'un glyphe d'après sa dernière colonne non transparente :
             # un pixel quasi invisible dans le coin droit garantit une largeur de 220.
             if t.getpixel((TILE_W - 1, 0))[3] == 0: t.putpixel((TILE_W - 1, 0), (0, 0, 0, 1))
-            name = f"main_{r}{c}.png"
+            name = f"{page}_{r}{c}.png"
             t.save(f"{NS}/textures/font/{name}")
             top = -OY + r * TILE_H                 # haut de la tuile dans le repère du coffre
             out.append({"type": "bitmap", "file": f"cobbleislands:font/{name}", "height": TILE_H,
@@ -224,6 +231,8 @@ final class GuiFont {{
 
     /** Glyphes des tuiles du fond du menu principal (haut-gauche, haut-droit, bas-gauche, bas-droit). */
     static final String MAIN_TILES = "{java_escape(''.join(TILE_CHARS))}";
+    /** Idem pour la page d'un bâtiment. */
+    static final String BUILDING_TILES = "{java_escape(''.join(chr(0xE104 + k) for k in range(4)))}";
     static final int TILE_W = {TILE_W}, CANVAS_X = {-OX};
     /** Espacements : NEG[i] recule de 2^i pixels, POS[i] avance de 2^i pixels. */
     static final String NEG = "{java_escape(''.join(NEG))}";

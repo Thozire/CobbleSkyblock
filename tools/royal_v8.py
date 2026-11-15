@@ -342,6 +342,7 @@ def bay(p, x0, y0, x1, y1, scene, lines, vw, vh, arch=0, sub=None):
     for i, a in enumerate((150, 100, 55, 25)):
         p.hline(x0, x1, y0 + i, (8, 2, 10, a)); p.vline(x0 + i, y0, y1, (8, 2, 10, a))
     p.hline(x0, x1, y1, (255, 220, 170, 35)); p.vline(x1, y0, y1, (255, 220, 170, 25))
+    if scene is None: return
     px_, py_ = x0 + 4, y0 + (y1 - y0 + 1 - vh) // 2 + 1
     painting(p, px_, py_, vw, vh, scene, arch)
     # libellé
@@ -360,7 +361,7 @@ def bay(p, x0, y0, x1, y1, scene, lines, vw, vh, arch=0, sub=None):
         p.px(cx_, cy_, GOLD[5]); p.px(cx_ + 1, cy_ + 1, GOLD[1])
 
 # ---------------------------------------------------------------- château
-def build(p, demo=False):
+def build(p, demo=False, page="main"):
     S = Pix(W, H, OX, OY)
 
     # toit central (derrière la bannière)
@@ -443,15 +444,48 @@ def build(p, demo=False):
     p.paste(S.img, -OX, -OY)
 
     # ---- boutons ----
-    bay(p, 5, 16, 171, 54, SCENES["kingdom"], ["Aller à mon", "royaume"], 92, 31)
-    bay(p, 5, 58, 85, 90, SCENES["build"], ["Bâtiments"], 24, 26, arch=5)
-    bay(p, 91, 58, 171, 90, SCENES["forge"], ["Améliorer"], 24, 26, arch=5)
-    bay(p, 5, 94, 85, 126, SCENES["court"], ["Membres"], 24, 26, arch=5)
-    bay(p, 91, 94, 171, 126, SCENES["capital"], ["Capitale"], 24, 26, arch=5)
-    for (bx0, by0, bx1, by1) in ((5, 16, 171, 54), (5, 58, 85, 90), (91, 58, 171, 90), (5, 94, 85, 126), (91, 94, 171, 126)):
+    if page == "main":
+        bay(p, 5, 16, 171, 54, SCENES["kingdom"], ["Aller à mon", "royaume"], 92, 31)
+        bay(p, 5, 58, 85, 90, SCENES["build"], ["Bâtiments"], 24, 26, arch=5)
+        bay(p, 91, 58, 171, 90, SCENES["forge"], ["Améliorer"], 24, 26, arch=5)
+        bay(p, 5, 94, 85, 126, SCENES["court"], ["Membres"], 24, 26, arch=5)
+        bay(p, 91, 94, 171, 126, SCENES["capital"], ["Capitale"], 24, 26, arch=5)
+        bays, knobs = ((5, 16, 171, 54), (5, 58, 85, 90), (91, 58, 171, 90), (5, 94, 85, 126), (91, 94, 171, 126)), ((88, 56), (88, 92))
+    else:
+        bay(p, 5, 16, 171, 52, SCENES["stock"], ["Récupérer", "le stock"], 92, 29)
+        bay(p, 5, 56, 85, 86, SCENES["forge"], ["Améliorer"], 24, 24, arch=5)
+        bay(p, 91, 56, 171, 86, SCENES["cart"], ["Ramasser"], 24, 24, arch=5)
+        bay(p, 5, 89, 171, 126, None, [], 0, 0)
+        # cases du stock (ligne 4 du coffre) : les objets du jeu s'affichent dedans
+        for c in range(9):
+            x, y = 8 + 18 * c, 90
+            p.rect(x - 1, y - 1, x + 16, y + 16, (20, 10, 14))
+            p.rect(x, y, x + 16, y + 16, WOOD[1]); p.rect(x, y, x + 15, y + 15, (44, 24, 26))
+            p.hline(x, x + 15, y, (16, 8, 12)); p.vline(x, y, y + 15, (16, 8, 12))
+            p.hline(x, x + 16, y + 16, WOOD[3]); p.vline(x + 16, y, y + 16, WOOD[3])
+        fancy_text_c(p, 88, 113, "Stock du bâtiment", grad=CREAM_GRAD, extrude=1, shine=False)
+        # retour (case 45) et fermer (case 53)
+        for (bx, pal, rows) in ((8, GOLD, ["........", "...#....", "..##....", ".#######", ".#######", "..##....", "...#....", "........"]),
+                                (152, RED, ["........", ".##..##.", ".###.##.", "..####..", "..####..", ".##.###.", ".##..##.", "........"])):
+            by = 108
+            p.rect(bx - 1, by - 1, bx + 16, by + 16, K)
+            for yy in range(16):
+                for xx in range(16):
+                    p.px(bx + xx, by + yy, pick(pal[2:6], 0.9 - yy / 20 - (0.2 if xx > 12 else 0), bx + xx, by + yy))
+            p.hline(bx, bx + 15, by, pal[6] if len(pal) > 6 else pal[5]); p.hline(bx, bx + 15, by + 15, pal[1]); p.vline(bx + 15, by, by + 15, pal[1])
+            for yy, r in enumerate(rows):
+                for xx, ch in enumerate(r):
+                    if ch == "#":
+                        p.rect(bx + xx * 2, by + yy * 2 + 1, bx + xx * 2 + 1, by + yy * 2 + 2, pal[0])
+            for yy, r in enumerate(rows):
+                for xx, ch in enumerate(r):
+                    if ch == "#": p.rect(bx + xx * 2, by + yy * 2, bx + xx * 2 + 1, by + yy * 2 + 1, (255, 248, 226))
+        bays, knobs = ((5, 16, 171, 52), (5, 56, 85, 86), (91, 56, 171, 86), (5, 89, 171, 126)), ((88, 54), (88, 87.5))
+    for (bx0, by0, bx1, by1) in bays:
         p.rect(bx0 - 1, by0 - 1, bx1 + 1, by0 - 1, K); p.rect(bx0 - 1, by1 + 1, bx1 + 1, by1 + 1, K)
         p.vline(bx0 - 1, by0 - 1, by1 + 1, K); p.vline(bx1 + 1, by0 - 1, by1 + 1, K)
-    for cx_, cy_ in ((88, 56), (88, 92)):
+    for cx_, cy_ in knobs:
+        cy_ = int(cy_)
         p.rect(cx_ - 3, cy_ - 2, cx_ + 3, cy_ + 2, K)
         ellipse(p, cx_, cy_, 2.2, 1.6, [GOLD[1], GOLD[3], GOLD[5], GOLD[6]])
 
@@ -489,12 +523,13 @@ def build(p, demo=False):
         for k in range(d // 2 + 1):
             hdr.px(k, y, (0, 0, 0, 0)); hdr.px(hw_ - 1 - k, y, (0, 0, 0, 0))
     stamp(p, hdr, PX0 - 5, PY0 + 10, K)
-    fancy_text_c(p, PX0 + PW // 2, PY0 + 14, "Ton royaume", grad=BRIGHT_GRAD, extrude=1, out=(30, 6, 12),
+    fancy_text_c(p, PX0 + PW // 2, PY0 + 14, "Ton royaume" if page == "main" else "Ce bâtiment", grad=BRIGHT_GRAD, extrude=1, out=(30, 6, 12),
                  ext_cols=((70, 14, 24),), shine=False)
     # catégories
     ROW0, STEP = PY0 + 30, 20
-    for i, (ic, lab) in enumerate((("crown", "Seigneur"), ("coins", "Trésor"), ("hourglass", "Revenu"),
-                                   ("trophy", "Rang"), ("people", "Membres"))):
+    rows_ = ((("crown", "Seigneur"), ("coins", "Trésor"), ("hourglass", "Revenu"), ("trophy", "Rang"), ("people", "Membres")) if page == "main"
+             else (("trophy", "Niveau"), ("hourglass", "Production"), ("chest", "Stock"), ("coins", "Valeur"), ("arrow", "Amélioration")))
+    for i, (ic, lab) in enumerate(rows_):
         y = ROW0 + i * STEP
         L = icon(ic)
         iw = L.img.width - 2 * L.ox
@@ -667,20 +702,22 @@ def build(p, demo=False):
     title_banner(p, -28, 204, -23, 27, 9, "ROYAUME")
 
     if demo:
-        vals = (("Thozire", (62, 38, 26)), ("12 480 écus", (156, 92, 16)), ("+356 / min", (34, 108, 38)),
-                ("#2 sur 14", (40, 76, 166)), ("2 / 3", (62, 38, 26)))
+        vals = ((("Thozire", (62, 38, 26)), ("12 480 écus", (156, 92, 16)), ("+356 / min", (34, 108, 38)),
+                 ("#2 sur 14", (40, 76, 166)), ("2 / 3", (62, 38, 26))) if page == "main" else
+                (("3 / 5", (62, 38, 26)), ("+32 / min", (34, 108, 38)), ("412 / 960", (62, 38, 26)),
+                 ("1 240 écus", (156, 92, 16)), ("3 500 écus", (40, 76, 166))))
         for i, (v, c) in enumerate(vals): p.text(-112 + 27, 36 + 30 + i * 20 + 9, v, c, False)
-        p.text_c(241, 162, "Niveau 2", (255, 236, 190), True)
+        p.text_c(241, 162, "Niveau 2" if page == "main" else "Scierie", (255, 236, 190), True)
 
-def render():
+def render(page="main"):
     """Fond définitif (sans textes dynamiques) : image 440x270."""
     p = Pix(W, H, OX, OY)
-    build(p, demo=False)
+    build(p, demo=False, page=page)
     return p.img
 
-def preview(path):
+def preview(path, page="main"):
     p = Pix(W, H, OX, OY)
-    build(p, demo=True)
+    build(p, demo=True, page=page)
     bg = Image.new("RGBA", (W + 40, H + 20), (0, 0, 0, 255))
     d = bg.load()
     for y in range(bg.height):

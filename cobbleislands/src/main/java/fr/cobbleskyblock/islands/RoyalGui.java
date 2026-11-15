@@ -83,6 +83,16 @@ final class RoyalGui {
     private static final int[] STATS_DY = {69, 89, 109, 129, 149};
     private static final int LEVEL_CX = 241, LEVEL_DY = 156;
 
+    /** Page d'un bâtiment : même parchemin (niveau, production, stock, valeur, amélioration) et nom sur la plaque. */
+    static Component buildingTitle(String level, String rate, String stock, String value, String upgrade, String name) {
+        Builder b = new Builder().background(GuiFont.BUILDING_TILES);
+        String[] v = {level, rate, stock, value, upgrade};
+        int[] c = {0x3E261A, 0x226C26, 0x3E261A, 0x9C5C10, 0x284CA6};
+        for (int i = 0; i < 5; i++) b.text(STATS_X, STATS_DY[i], fit(v[i], 68), c[i]);
+        b.textCentered(LEVEL_CX, LEVEL_DY, fit(name, 52), 0xFFECBE);
+        return b.build();
+    }
+
     static Component mainTitle(String lord, String treasury, String income, String rank, String members, String level) {
         Builder b = new Builder().background(GuiFont.MAIN_TILES);
         String[] v = {lord, treasury, income, rank, members};
