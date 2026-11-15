@@ -12,14 +12,18 @@ import java.nio.file.Path;
 
 /** Réglages modifiables dans config/cobbleislands.json (rechargés au redémarrage). */
 public class IslandConfig {
+    /** Version du fichier (migration automatique des anciennes valeurs). */
+    public int version = 2;
     /** Distance entre deux domaines (en blocs). Ne pas changer une fois des royaumes créés. */
     public int espacement = 512;
-    /** Hauteur du sol des domaines (la dimension est plate : herbe à y=-1). */
-    public int hauteur = 0;
-    /** Structure du campement de départ. */
-    public String modele = "cobbleislands:campement";
-    /** Demi-largeur du domaine pour chaque niveau. */
-    public int[] taillesParNiveau = {24, 40, 60, 80, 100};
+    /** Hauteur où l'on marche sur les îles (la dimension est vide). */
+    public int hauteur = 100;
+    /** Rayon de l'île pour chaque niveau. */
+    public int[] taillesParNiveau = {12, 18, 26, 36, 48};
+    /** Marge constructible au-delà du bord de l'île (bordure visible). */
+    public int marge = 4;
+    /** Nombre maximum de machines par niveau d'île. */
+    public int[] machinesParNiveau = {4, 6, 9, 13, 18};
     /** Prix (écus) pour atteindre chaque niveau de domaine (le premier est gratuit). */
     public int[] coutTaille = {0, 2000, 8000, 25000, 60000};
     /** Nombre maximum de membres (seigneur compris) par niveau d'équipe. */
@@ -55,6 +59,15 @@ public class IslandConfig {
                 try (Reader r = Files.newBufferedReader(p, StandardCharsets.UTF_8)) {
                     IslandConfig read = GSON.fromJson(r, IslandConfig.class);
                     if (read != null) cfg = read;
+                    if (cfg.version < 2) {             // passage aux îles flottantes
+                        IslandConfig def = new IslandConfig();
+                        cfg.hauteur = def.hauteur;
+                        cfg.taillesParNiveau = def.taillesParNiveau;
+                        cfg.marge = def.marge;
+                        cfg.machinesParNiveau = def.machinesParNiveau;
+                        cfg.version = 2;
+                    }
+                    if (cfg.machinesParNiveau == null) cfg.machinesParNiveau = new IslandConfig().machinesParNiveau;
                 }
             }
             try (Writer w = Files.newBufferedWriter(p, StandardCharsets.UTF_8)) {
@@ -73,6 +86,10 @@ public class IslandConfig {
     public int sizeCost(int level) { return level >= 1 && level <= coutTaille.length ? coutTaille[level - 1] : -1; }
 
     public int membersCost(int level) { return level >= 1 && level <= coutMembres.length ? coutMembres[level - 1] : -1; }
+
+    public int machinesFor(int level) {
+        return machinesParNiveau[Math.max(0, Math.min(level, machinesParNiveau.length) - 1)];
+    }
 
     public int membersFor(int level) {
         return membresParNiveau[Math.max(0, Math.min(level, membresParNiveau.length) - 1)];

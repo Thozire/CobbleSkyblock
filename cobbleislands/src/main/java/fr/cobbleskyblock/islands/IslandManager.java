@@ -1,8 +1,18 @@
 package fr.cobbleskyblock.islands;
 
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.Direction;
-import net.minecraft.core.particles.DustParticleOptions;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.protocol.game.ClientboundInitializeBorderPacket;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.sounds.SoundSource;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.item.component.CustomData;
+import net.minecraft.world.item.component.CustomModelData;
+import net.minecraft.world.item.component.ItemLore;
+import net.minecraft.world.level.border.WorldBorder;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
@@ -12,34 +22,27 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
-import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.levelgen.structure.templatesystem.StructurePlaceSettings;
-import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplate;
-import org.joml.Vector3f;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Random;
 import java.util.UUID;
 
 /** Logique des royaumes : grille des domaines, création, bâtiments, production, équipe. */
 public class IslandManager {
     public static final ResourceKey<Level> ISLANDS = ResourceKey.create(Registries.DIMENSION,
-            ResourceLocation.fromNamespaceAndPath("cobbleislands", "royaumes"));
+            ResourceLocation.fromNamespaceAndPath("cobbleislands", "iles"));
     private static final int COLUMNS = 50;
 
     public record Invite(int islandId, String from, long expires) {}
-    public record Pending(BuildingType type, BlockPos origin, long expires) {}
 
     private final MinecraftServer server;
     private final IslandConfig cfg;
     private final Random rnd = new Random();
     public final Map<UUID, Invite> invites = new HashMap<>();
     public final Map<UUID, Long> pendingDelete = new HashMap<>();
-    public final Map<UUID, Pending> placing = new HashMap<>();
 
     public IslandManager(MinecraftServer server, IslandConfig cfg) {
         this.server = server;
@@ -70,11 +73,16 @@ public class IslandManager {
         return data().islands.get(row * COLUMNS + col + 1);
     }
 
+    /** Zone constructible : le rayon de l'île plus une marge (pour les ponts et balcons). */
+    public int buildRadius(Island is) { return cfg.radiusFor(is.sizeLevel) + cfg.marge; }
+
     public boolean inBounds(Island is, BlockPos pos) {
         BlockPos c = center(is.id);
-        int r = cfg.radiusFor(is.sizeLevel);
+        int r = buildRadius(is);
         return Math.abs(pos.getX() - c.getX()) <= r && Math.abs(pos.getZ() - c.getZ()) <= r;
     }
+
+    public int maxMachines(Island is) { return cfg.machinesFor(is.sizeLevel); }
 
     public int maxMembers(Island is) { return cfg.membersFor(is.memberLevel); }
 
@@ -82,51 +90,28 @@ public class IslandManager {
 
     // ---------- création ----------
 
-    private boolean placeTemplate(ServerLevel level, String name, BlockPos origin) {
-        Optional<StructureTemplate> tpl = server.getStructureManager().get(ResourceLocation.parse(name));
-        if (tpl.isEmpty()) {
-            CobbleIslands.LOG.warn("Structure {} introuvable", name);
-            return false;
-        }
-        tpl.get().placeInWorld(level, origin, origin, new StructurePlaceSettings(), level.getRandom(), Block.UPDATE_CLIENTS);
-        return true;
-    }
+    private static long seedOf(Island is) { return is.id * 0x9E3779B97F4A7C15L + 12345L; }
 
     public String create(ServerPlayer player) {
         IslandData d = data();
         if (d.byPlayer.containsKey(player.getUUID())) return "Tu as déjà un royaume : /royaume go";
         ServerLevel level = islandsLevel();
-        if (level == null) return "La dimension des royaumes n'est pas chargée (redémarre le serveur).";
+        if (level == null) return "La dimension des îles n'est pas chargée (redémarre le serveur).";
         int id = d.nextId++;
         BlockPos c = center(id);
-        // le campement (9x9) est centré sur le domaine, posé à la place de l'herbe
-        placeTemplate(level, cfg.modele, c.offset(-4, -1, -4));
         Island is = new Island(id, player.getUUID(), player.getGameProfile().getName());
-        is.home = c.offset(0, 0, 6);
+        IslandGen.generate(level, c, 0, cfg.radiusFor(1), seedOf(is));
+        level.setBlock(c.below(), Blocks.GRASS_BLOCK.defaultBlockState(), Block.UPDATE_CLIENTS);
+        for (int y = 0; y < 3; y++) level.setBlock(c.above(y), Blocks.AIR.defaultBlockState(), Block.UPDATE_CLIENTS);
+        is.home = c;
         is.open = cfg.visitesOuvertesParDefaut;
         is.money = cfg.ecusDepart;
         d.islands.put(id, is);
         d.byPlayer.put(player.getUUID(), is);
         d.setDirty();
-        markCorners(is, true);
         teleportHome(player, is);
+        give(player, machineItem(BuildingType.SCIERIE, 1));
         return null;
-    }
-
-    /** Bornes (muret + lanterne) aux quatre coins du domaine. */
-    public void markCorners(Island is, boolean place) {
-        ServerLevel level = islandsLevel();
-        BlockPos c = center(is.id);
-        int r = radius(is);
-        BlockState wall = place ? Blocks.MOSSY_COBBLESTONE_WALL.defaultBlockState() : Blocks.AIR.defaultBlockState();
-        BlockState lantern = place ? Blocks.LANTERN.defaultBlockState() : Blocks.AIR.defaultBlockState();
-        for (int sx : new int[]{-1, 1})
-            for (int sz : new int[]{-1, 1}) {
-                BlockPos p = c.offset(sx * r, 0, sz * r);
-                level.setBlockAndUpdate(p, wall);
-                level.setBlockAndUpdate(p.above(), wall);
-                level.setBlockAndUpdate(p.above(2), lantern);
-            }
     }
 
     // ---------- téléportations ----------
@@ -170,6 +155,8 @@ public class IslandManager {
     }
 
     public void delete(Island is) {
+        ServerLevel level = islandsLevel();
+        if (level != null) for (Building b : is.buildings) MachineEntities.remove(level, b);
         for (UUID u : is.members.keySet().toArray(new UUID[0])) removeMember(is, u);
         data().islands.remove(is.id);
         data().setDirty();
@@ -194,12 +181,17 @@ public class IslandManager {
         int cost = cfg.sizeCost(next);
         if (cost < 0) return "Ton domaine est déjà au niveau maximum.";
         if (is.money < cost) return "Il te manque " + Market.fmt(cost - is.money) + " écus.";
-        markCorners(is, false);
+        int from = cfg.radiusFor(is.sizeLevel);
         is.money -= cost;
         is.sizeLevel = next;
-        markCorners(is, true);
+        IslandGen.generate(islandsLevel(), center(is.id), from, cfg.radiusFor(next), seedOf(is));
         data().setDirty();
         return null;
+    }
+
+    /** Agrandit l'île jusqu'au rayon de son niveau actuel (commande admin). */
+    public void growIsland(Island is, int fromRadius) {
+        IslandGen.generate(islandsLevel(), center(is.id), fromRadius, cfg.radiusFor(is.sizeLevel), seedOf(is));
     }
 
     public String upgradeMembers(Island is) {
@@ -213,79 +205,105 @@ public class IslandManager {
         return null;
     }
 
-    // ---------- bâtiments ----------
+    // ---------- machines ----------
 
-    private String validate(Island is, BlockPos origin) {
-        BlockPos[] corners = {origin, origin.offset(Building.SIZE_X - 1, 0, 0), origin.offset(0, 0, Building.SIZE_Z - 1),
-                origin.offset(Building.SIZE_X - 1, 0, Building.SIZE_Z - 1)};
-        for (BlockPos c : corners) if (islandAt(c) != is || !inBounds(is, c)) return "Le bâtiment dépasse de ton domaine.";
-        BlockPos camp = center(is.id).offset(-4, 0, -4);
-        if (Math.abs(origin.getX() - camp.getX()) < Building.SIZE_X + 2 && Math.abs(origin.getZ() - camp.getZ()) < Building.SIZE_Z + 2)
-            return "Trop près du campement : éloigne-toi un peu.";
-        for (Building b : is.buildings) if (b.overlaps(origin)) return "Trop près d'un autre bâtiment (" + b.type.label + ").";
-        if (Math.abs(origin.getY() - cfg.hauteur) > 6) return "Place-toi au niveau du sol.";
+    public static final String MACHINE_KEY = "royaumes_machine";
+
+    /** Objet « machine » à poser (papier + modèle 3D), avec son type et son niveau. */
+    public static ItemStack machineItem(BuildingType t, int level) {
+        ItemStack s = new ItemStack(Items.PAPER);
+        s.set(DataComponents.CUSTOM_MODEL_DATA, new CustomModelData(t.icon()));
+        s.set(DataComponents.CUSTOM_NAME, Component.literal(t.label + (level > 1 ? " (niv. " + level + ")" : ""))
+                .withStyle(st -> st.withColor(0xFFC94D).withBold(true).withItalic(false)));
+        List<Component> lore = new ArrayList<>();
+        lore.add(Component.literal("Machine de ton royaume").withStyle(st -> st.withColor(0xC8BBA0).withItalic(false)));
+        lore.add(Component.literal("Production : " + t.rate(level) + " /min").withStyle(st -> st.withColor(0x8BE37A).withItalic(false)));
+        lore.add(Component.literal(""));
+        lore.add(Component.literal("Clic droit sur ton île pour la poser").withStyle(st -> st.withColor(0xFFF1D0).withItalic(false)));
+        s.set(DataComponents.LORE, new ItemLore(lore));
+        CompoundTag tag = new CompoundTag();
+        tag.putString(MACHINE_KEY, t.id);
+        tag.putInt("level", level);
+        s.set(DataComponents.CUSTOM_DATA, CustomData.of(tag));
+        s.set(DataComponents.MAX_STACK_SIZE, 1);
+        return s;
+    }
+
+    /** Type de machine porté par un objet, ou null. */
+    public static BuildingType machineOf(ItemStack s) {
+        CustomData cd = s.get(DataComponents.CUSTOM_DATA);
+        if (cd == null) return null;
+        CompoundTag t = cd.copyTag();
+        return t.contains(MACHINE_KEY) ? BuildingType.byName(t.getString(MACHINE_KEY)) : null;
+    }
+
+    public static int machineLevel(ItemStack s) {
+        CustomData cd = s.get(DataComponents.CUSTOM_DATA);
+        return cd == null ? 1 : Math.max(1, Math.min(BuildingType.MAX_LEVEL, cd.copyTag().getInt("level")));
+    }
+
+    public static void give(ServerPlayer p, ItemStack s) {
+        if (!p.getInventory().add(s)) p.drop(s, false);
+    }
+
+    public String buyMachine(ServerPlayer p, BuildingType t) {
+        Island is = islandOf(p.getUUID());
+        if (is == null) return "Tu n'as pas de royaume.";
+        if (is.money < t.price) return "Il te manque " + Market.fmt(t.price - is.money) + " écus.";
+        is.money -= t.price;
+        data().setDirty();
+        give(p, machineItem(t, 1));
         return null;
     }
 
-    /** Prépare la construction devant le joueur (aperçu en particules). Renvoie un problème éventuel. */
-    public String startPlacement(ServerPlayer p, BuildingType t) {
+    /** Pose une machine (objet en main) au bloc pos, façade vers le joueur. */
+    public String placeMachine(ServerPlayer p, ItemStack stack, BlockPos pos) {
+        BuildingType t = machineOf(stack);
+        if (t == null) return "Objet invalide.";
+        ServerLevel level = islandsLevel();
+        if (p.level() != level) return "Les machines se posent sur ton île (/royaume go).";
         Island is = islandOf(p.getUUID());
         if (is == null) return "Tu n'as pas de royaume.";
-        if (p.level().dimension() != ISLANDS || islandAt(p.blockPosition()) != is) return "Va sur ton domaine pour construire (/royaume go).";
-        if (is.money < t.price) return "Il te manque " + Market.fmt(t.price - is.money) + " écus.";
-        Direction f = p.getDirection();
-        BlockPos center = p.blockPosition().relative(f, 7);
-        BlockPos origin = center.offset(-Building.SIZE_X / 2, 0, -Building.SIZE_Z / 2);
-        placing.put(p.getUUID(), new Pending(t, origin, System.currentTimeMillis() + 60_000));
-        return validate(is, origin);
-    }
-
-    public String confirmPlacement(ServerPlayer p) {
-        Pending pd = placing.remove(p.getUUID());
-        if (pd == null || pd.expires() < System.currentTimeMillis()) return "Aucune construction en attente.";
-        Island is = islandOf(p.getUUID());
-        if (is == null) return "Tu n'as pas de royaume.";
-        String err = validate(is, pd.origin());
-        if (err != null) return err;
-        if (is.money < pd.type().price) return "Il te manque " + Market.fmt(pd.type().price - is.money) + " écus.";
-        is.money -= pd.type().price;
-        placeTemplate(islandsLevel(), "cobbleislands:" + pd.type().structure, pd.origin().below());
-        is.buildings.add(new Building(is.nextBuildingId++, pd.type(), pd.origin()));
+        if (islandAt(pos) != is || !inBounds(is, pos)) return "Pose-la sur ton île.";
+        if (!level.getBlockState(pos).canBeReplaced()) return "Il n'y a pas la place ici.";
+        if (level.getBlockState(pos.below()).isAir()) return "Une machine doit être posée sur le sol.";
+        if (is.machineAt(pos) != null) return "Il y a déjà une machine ici.";
+        if (is.buildings.size() >= maxMachines(is))
+            return "Limite atteinte (" + maxMachines(is) + " machines) : agrandis ton île pour en poser plus.";
+        float yaw = p.getDirection().getOpposite().toYRot();
+        Building b = new Building(is.nextBuildingId++, t, pos.immutable(), yaw);
+        b.level = machineLevel(stack);
+        MachineEntities.spawn(level, b);
+        is.buildings.add(b);
+        if (!p.isCreative()) stack.shrink(1);
+        level.playSound(null, pos, SoundEvents.WOOD_PLACE, SoundSource.BLOCKS, 1f, 0.8f);
         data().setDirty();
         return null;
     }
 
-    /** Aperçu en particules du terrain occupé par les constructions en attente. */
-    public void showPreviews() {
-        long now = System.currentTimeMillis();
-        placing.entrySet().removeIf(e -> e.getValue().expires() < now);
-        ServerLevel level = islandsLevel();
-        if (level == null) return;
-        for (Map.Entry<UUID, Pending> e : placing.entrySet()) {
-            ServerPlayer p = server.getPlayerList().getPlayer(e.getKey());
-            if (p == null || p.level() != level) continue;
-            Island is = islandOf(p.getUUID());
-            boolean ok = is != null && validate(is, e.getValue().origin()) == null;
-            DustParticleOptions dust = new DustParticleOptions(ok ? new Vector3f(0.35f, 1f, 0.45f) : new Vector3f(1f, 0.3f, 0.3f), 1.3f);
-            BlockPos o = e.getValue().origin();
-            double y = o.getY() + 0.15;
-            for (int i = 0; i <= Building.SIZE_X; i++) {
-                level.sendParticles(p, dust, true, o.getX() + i, y, o.getZ(), 1, 0, 0, 0, 0);
-                level.sendParticles(p, dust, true, o.getX() + i, y, o.getZ() + Building.SIZE_Z, 1, 0, 0, 0, 0);
-            }
-            for (int k = 0; k <= Building.SIZE_Z; k++) {
-                level.sendParticles(p, dust, true, o.getX(), y, o.getZ() + k, 1, 0, 0, 0, 0);
-                level.sendParticles(p, dust, true, o.getX() + Building.SIZE_X, y, o.getZ() + k, 1, 0, 0, 0, 0);
-            }
-            for (int h = 1; h < 6; h++)
-                for (int[] c : new int[][]{{0, 0}, {Building.SIZE_X, 0}, {0, Building.SIZE_Z}, {Building.SIZE_X, Building.SIZE_Z}})
-                    level.sendParticles(p, dust, true, o.getX() + c[0], y + h * 0.8, o.getZ() + c[1], 1, 0, 0, 0, 0);
-        }
+    /** Ramasse une machine : son stock est vendu, l'objet (avec son niveau) revient au joueur. */
+    public long pickUp(ServerPlayer p, Island is, Building b) {
+        long gain = Market.sellBuilding(is, b);
+        MachineEntities.remove(islandsLevel(), b);
+        is.buildings.remove(b);
+        data().setDirty();
+        give(p, machineItem(b.type, b.level));
+        return gain;
+    }
+
+    /** Une machine a perdu son bloc (opérateur en créatif) : on la retire proprement. */
+    public void machineBroken(ServerLevel level, BlockPos pos) {
+        Island is = islandAt(pos);
+        Building b = is == null ? null : is.machineAt(pos);
+        if (b == null) return;
+        MachineEntities.remove(level, b);
+        is.buildings.remove(b);
+        data().setDirty();
     }
 
     public String upgradeBuilding(Island is, Building b) {
         int cost = b.type.nextCost(b.level);
-        if (cost < 0) return "Ce bâtiment est déjà au niveau maximum.";
+        if (cost < 0) return "Cette machine est déjà au niveau maximum.";
         if (is.money < cost) return "Il te manque " + Market.fmt(cost - is.money) + " écus.";
         is.money -= cost;
         b.level++;
@@ -293,25 +311,50 @@ public class IslandManager {
         return null;
     }
 
-    /** Démolit un bâtiment (rembourse la moitié de son prix d'achat). */
-    public void demolish(Island is, Building b) {
+    private int animStep;
+
+    /** Animation des machines (toutes les 10 ticks). */
+    public void animate() {
         ServerLevel level = islandsLevel();
-        BlockPos o = b.origin;
-        BlockState air = Blocks.AIR.defaultBlockState(), grass = Blocks.GRASS_BLOCK.defaultBlockState();
-        for (int x = 0; x < Building.SIZE_X; x++)
-            for (int z = 0; z < Building.SIZE_Z; z++) {
-                level.setBlock(o.offset(x, -1, z), grass, Block.UPDATE_CLIENTS);
-                for (int y = 0; y < Building.SIZE_Y + 2; y++) level.setBlock(o.offset(x, y, z), air, Block.UPDATE_CLIENTS);
-            }
-        is.buildings.remove(b);
-        is.money += b.type.price / 2;
-        data().setDirty();
+        if (level == null) return;
+        animStep++;
+        for (Island is : data().islands.values())
+            for (Building b : is.buildings) MachineEntities.animate(level, b, animStep);
     }
 
-    public Building buildingAtLectern(Island is, BlockPos pos) {
-        for (Building b : is.buildings) if (b.lectern().equals(pos)) return b;
-        return null;
+    // ---------- bordure et chute dans le vide ----------
+
+    private final Map<UUID, String> borderSent = new HashMap<>();
+
+    /** Chaque joueur voit la bordure de l'île où il se trouve ; s'il tombe, il revient sur l'île. */
+    public void watchPlayers() {
+        ServerLevel level = islandsLevel();
+        for (ServerPlayer p : server.getPlayerList().getPlayers()) {
+            if (p.level() != level) { borderSent.remove(p.getUUID()); continue; }
+            Island is = islandAt(p.blockPosition());
+            if (p.getY() < cfg.hauteur - 48) {
+                Island to = is != null && (is.open || is.isMember(p.getUUID())) ? is : islandOf(p.getUUID());
+                p.fallDistance = 0;
+                if (to != null) visit(p, to); else teleportSpawn(p);
+                p.displayClientMessage(Msg.info("Attention au vide !"), true);
+                continue;
+            }
+            if (is == null) continue;
+            BlockPos c = center(is.id);
+            int r = buildRadius(is);
+            String key = is.id + ":" + r;
+            if (key.equals(borderSent.get(p.getUUID()))) continue;
+            borderSent.put(p.getUUID(), key);
+            WorldBorder wb = new WorldBorder();
+            wb.setCenter(c.getX() + 0.5, c.getZ() + 0.5);
+            wb.setSize(2 * r + 1);
+            wb.setWarningBlocks(2);
+            wb.setWarningTime(0);
+            p.connection.send(new ClientboundInitializeBorderPacket(wb));
+        }
     }
+
+    public void forgetBorder(UUID u) { borderSent.remove(u); }
 
     // ---------- production ----------
 

@@ -37,6 +37,7 @@ public class CobbleIslands implements ModInitializer {
             ServerPlayer p = handler.getPlayer();
             ResourcePackSender.send(p, manager.config());
             Hud.forget(p.getUUID());
+            manager.forgetBorder(p.getUUID());
             Island is = manager.islandOf(p.getUUID());
             if (is == null) {
                 p.sendSystemMessage(Msg.info("Bienvenue à la capitale, voyageur ! ")
@@ -48,7 +49,10 @@ public class CobbleIslands implements ModInitializer {
                         .append(Msg.button("Menu", "/royaume", ChatFormatting.AQUA)));
             }
         });
-        ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> Hud.forget(handler.getPlayer().getUUID()));
+        ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> {
+            Hud.forget(handler.getPlayer().getUUID());
+            if (manager != null) manager.forgetBorder(handler.getPlayer().getUUID());
+        });
 
         ServerTickEvents.END_SERVER_TICK.register(CobbleIslands::tick);
     }
@@ -59,7 +63,7 @@ public class CobbleIslands implements ModInitializer {
         if (manager == null) return;
         ticks++;
         if (ticks % 20 == 0) manager.produce();
-        if (ticks % 10 == 0) manager.showPreviews();
+        if (ticks % 10 == 0) { manager.animate(); manager.watchPlayers(); }
         if (ticks % 40 == 0) for (ServerPlayer p : server.getPlayerList().getPlayers()) Hud.update(p, manager);
         if (ticks % 1200 == 0) SpawnBuilder.refreshLeaderboard(manager);
     }

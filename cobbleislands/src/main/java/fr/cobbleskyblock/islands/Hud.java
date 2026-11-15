@@ -51,7 +51,7 @@ public final class Hud {
             lines.add(Component.literal("  "));
             lines.add(line("Trésor : ", Market.fmt(is.money) + " écus", ChatFormatting.GOLD));
             lines.add(line("Revenu : ", "+" + Market.fmt(m.incomePerMinute(is)) + "/min", ChatFormatting.GREEN));
-            lines.add(line("Bâtiments : ", String.valueOf(is.buildings.size()), ChatFormatting.WHITE));
+            lines.add(line("Machines : ", is.buildings.size() + "/" + m.maxMachines(is), ChatFormatting.WHITE));
             lines.add(line("Rang : ", "#" + m.rankOf(is), ChatFormatting.AQUA));
             lines.add(Component.literal("   "));
             lines.add(Component.literal(" /royaume").withStyle(ChatFormatting.DARK_AQUA));

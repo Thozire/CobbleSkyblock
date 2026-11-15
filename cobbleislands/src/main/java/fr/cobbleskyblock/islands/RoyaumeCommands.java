@@ -72,15 +72,10 @@ public final class RoyaumeCommands {
                 .then(literal("fermer").executes(c -> setOpen(c, false)))
                 .then(literal("supprimer").executes(RoyaumeCommands::deleteAsk)
                         .then(literal("confirmer").executes(RoyaumeCommands::deleteConfirm)))
-                .then(literal("construire")
-                        .then(literal("confirmer").executes(RoyaumeCommands::buildConfirm))
-                        .then(literal("annuler").executes(c -> {
-                            mgr().placing.remove(c.getSource().getPlayerOrException().getUUID());
-                            return ok(c, () -> Msg.info("Construction annulée."));
-                        }))
-                        .then(argument("batiment", StringArgumentType.word())
-                                .suggests((c, b) -> SharedSuggestionProvider.suggest(Arrays.stream(BuildingType.values()).map(t -> t.structure), b))
-                                .executes(RoyaumeCommands::build)))
+                .then(literal("acheter")
+                        .then(argument("machine", StringArgumentType.word())
+                                .suggests((c, b) -> SharedSuggestionProvider.suggest(Arrays.stream(BuildingType.values()).map(t -> t.id), b))
+                                .executes(RoyaumeCommands::buy)))
                 .then(literal("vendre").executes(RoyaumeCommands::sellAll))
                 .then(literal("ecus").executes(RoyaumeCommands::balance))
                 .then(literal("classement").executes(c -> { KingdomMenus.ranking(c.getSource().getPlayerOrException(), 0); return 1; }))
@@ -130,9 +125,7 @@ public final class RoyaumeCommands {
         ServerPlayer p = c.getSource().getPlayerOrException();
         String err = mgr().create(p);
         if (err != null) return fail(c, err);
-        return ok(c, () -> Msg.ok("Ton royaume est fondé ! Commence par construire une ")
-                .append(Msg.button("Scierie", "/royaume construire scierie", ChatFormatting.GOLD))
-                .append(Component.literal(" — ").withStyle(ChatFormatting.GRAY))
+        return ok(c, () -> Msg.ok("Ton île est née ! Une §6Scierie §ats'attend dans ton inventaire : pose-la sur ton île. ")
                 .append(Msg.button("Menu", "/royaume", ChatFormatting.AQUA)));
     }
 
@@ -261,31 +254,13 @@ public final class RoyaumeCommands {
         return ok(c, () -> Msg.info("Ton royaume a été abandonné. Tu peux en fonder un autre avec /royaume creer."));
     }
 
-    private static int build(CommandContext<CommandSourceStack> c) throws CommandSyntaxException {
+    private static int buy(CommandContext<CommandSourceStack> c) throws CommandSyntaxException {
         ServerPlayer p = c.getSource().getPlayerOrException();
-        BuildingType t = BuildingType.byName(StringArgumentType.getString(c, "batiment"));
-        if (t == null) return fail(c, "Bâtiment inconnu.");
-        Island is = mine(c, p);
-        if (is == null) return 0;
-        String warn = mgr().startPlacement(p, t);
-        if (!mgr().placing.containsKey(p.getUUID())) return fail(c, warn);
-        c.getSource().sendSystemMessage(Msg.info(t.label + " (" + Market.fmt(t.price) + " écus) : l'emplacement est dessiné devant toi"
-                        + (warn == null ? " en §avert§7." : " en §crouge§7 : " + warn))
-                .append(Component.literal("\n "))
-                .append(Msg.button("Construire ici", "/royaume construire confirmer", ChatFormatting.GREEN)).append(Component.literal(" "))
-                .append(Msg.button("Déplacer", "/royaume construire " + t.structure, ChatFormatting.YELLOW)).append(Component.literal(" "))
-                .append(Msg.button("Annuler", "/royaume construire annuler", ChatFormatting.RED))
-                .append(Component.literal("\n §8Avance ou tourne-toi, puis clique sur « Déplacer ».").withStyle(ChatFormatting.DARK_GRAY)));
-        return 1;
-    }
-
-    private static int buildConfirm(CommandContext<CommandSourceStack> c) throws CommandSyntaxException {
-        ServerPlayer p = c.getSource().getPlayerOrException();
-        IslandManager.Pending pd = mgr().placing.get(p.getUUID());
-        String err = mgr().confirmPlacement(p);
+        BuildingType t = BuildingType.byName(StringArgumentType.getString(c, "machine"));
+        if (t == null) return fail(c, "Machine inconnue.");
+        String err = mgr().buyMachine(p, t);
         if (err != null) return fail(c, err);
-        String label = pd != null ? pd.type().label : "Bâtiment";
-        return ok(c, () -> Msg.ok(label + " construite ! Elle produit déjà. Clique sur son pupitre pour la gérer."));
+        return ok(c, () -> Msg.ok(t.label + " achetée ! Fais un clic droit sur ton île pour la poser."));
     }
 
     private static int sellAll(CommandContext<CommandSourceStack> c) throws CommandSyntaxException {
@@ -322,7 +297,11 @@ public final class RoyaumeCommands {
         int lvl = IntegerArgumentType.getInteger(c, "niveau");
         int max = size ? mgr().config().taillesParNiveau.length : mgr().config().membresParNiveau.length;
         if (lvl > max) return fail(c, "Niveau maximum : " + max + ".");
-        if (size) { mgr().markCorners(is, false); is.sizeLevel = lvl; mgr().markCorners(is, true); }
+        if (size) {
+            int from = mgr().config().radiusFor(is.sizeLevel);
+            is.sizeLevel = lvl;
+            if (mgr().config().radiusFor(lvl) > from) mgr().growIsland(is, from);
+        }
         else is.memberLevel = lvl;
         mgr().data().setDirty();
         return ok(c, () -> Msg.ok("Niveau mis à jour."));

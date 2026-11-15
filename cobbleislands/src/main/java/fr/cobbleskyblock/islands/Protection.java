@@ -25,7 +25,7 @@ import java.util.UUID;
 /**
  * Protection : dans la dimension des royaumes, seuls les membres agissent sur leur domaine ;
  * la capitale est protégée (on peut utiliser, pas construire). Les opérateurs passent partout.
- * Gère aussi les pupitres des bâtiments et le marchand de la capitale.
+ * Gère aussi la pose et le clic des machines, et le marchand de la capitale.
  */
 public final class Protection {
     private Protection() {}
@@ -76,20 +76,37 @@ public final class Protection {
         AttackBlockCallback.EVENT.register((player, level, hand, pos, dir) ->
                 allowed(player, level, pos) ? InteractionResult.PASS : InteractionResult.FAIL);
         UseBlockCallback.EVENT.register((player, level, hand, hit) -> {
-            // pupitre d'un bâtiment : ouvre son menu
             if (!level.isClientSide() && player instanceof ServerPlayer sp && level.dimension() == IslandManager.ISLANDS) {
                 IslandManager m = CobbleIslands.manager();
-                Island is = m == null ? null : m.islandAt(hit.getBlockPos());
-                Building b = is == null ? null : m.buildingAtLectern(is, hit.getBlockPos());
-                if (b != null) {
-                    if (hand == InteractionHand.MAIN_HAND) {
-                        if (is.isMember(sp.getUUID())) KingdomMenus.building(sp, b.id);
-                        else sp.displayClientMessage(Msg.info(b.type.label + " (niv. " + b.level + ") du " + is.name), true);
+                if (m != null) {
+                    // clic sur une machine : ouvre son menu
+                    Island is = m.islandAt(hit.getBlockPos());
+                    Building b = is == null ? null : is.machineAt(hit.getBlockPos());
+                    if (b != null && !sp.isShiftKeyDown()) {
+                        if (hand == InteractionHand.MAIN_HAND) {
+                            if (is.isMember(sp.getUUID())) KingdomMenus.building(sp, b.id);
+                            else sp.displayClientMessage(Msg.info(b.type.label + " (niv. " + b.level + ") du " + is.name), true);
+                        }
+                        return InteractionResult.SUCCESS;
                     }
-                    return InteractionResult.SUCCESS;
+                    // objet « machine » en main : on la pose
+                    ItemStack held = player.getItemInHand(hand);
+                    if (IslandManager.machineOf(held) != null) {
+                        BlockPos target = level.getBlockState(hit.getBlockPos()).canBeReplaced() ? hit.getBlockPos()
+                                : hit.getBlockPos().relative(hit.getDirection());
+                        String err = m.placeMachine(sp, held, target);
+                        if (err != null) sp.displayClientMessage(Msg.err(err), true);
+                        sp.containerMenu.sendAllDataToRemote();
+                        return InteractionResult.SUCCESS;
+                    }
                 }
             }
             return allowedUse(player, level, hit.getBlockPos(), player.getItemInHand(hand)) ? InteractionResult.PASS : InteractionResult.FAIL;
+        });
+        PlayerBlockBreakEvents.AFTER.register((level, player, pos, state, be) -> {
+            IslandManager m = CobbleIslands.manager();
+            if (m != null && level instanceof net.minecraft.server.level.ServerLevel sl && level.dimension() == IslandManager.ISLANDS)
+                m.machineBroken(sl, pos);
         });
         UseEntityCallback.EVENT.register((player, level, hand, entity, hit) -> {
             if (entity.getTags().contains(MERCHANT_TAG)) {
