@@ -2,7 +2,7 @@ hash-format = "sha256"
 
 [[files]]
 file = "mods/cobbleislands.pw.toml"
-hash = "cf3c9aa4b697e149cdfb34be027a68d2ce54f2a8ca64ea791cb03bcb887f2859"
+hash = "8cb68c8e81c12f2f24e393646061c0d39c4036a8da14eac29ba99fa5c0170487"
 metafile = true
 
 [[files]]
@@ -12,4 +12,4 @@ metafile = true
 
 [[files]]
 file = "resourcepacks/RoyaumesPack.zip"
-hash = "9bd9b290962a11186c524cd75b7a7765dcbbf920edf2fffdef70503c98ef9e2c"
+hash = "94e7cc185381bd5d3677f18736dac6bcaec1b00f31060dbf5934c5063d5d9736"
