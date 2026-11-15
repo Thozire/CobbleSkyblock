@@ -173,6 +173,22 @@ final class MachineEntities {
             if (level.getBlockState(p).is(Blocks.BARRIER)) level.setBlock(p, Blocks.AIR.defaultBlockState(), Block.UPDATE_ALL);
     }
 
+    /**
+     * Retire les entités orphelines d'un bâtiment : d'anciens affichages chargés après une reconstruction
+     * (ils resteraient immobiles, en double sous les pièces animées) et les zones de clic en trop.
+     */
+    static void purge(ServerLevel level, Building b) {
+        boolean zone = false;
+        for (Entity e : level.getEntities((Entity) null, new AABB(b.pos).inflate(0.4), en -> en.getTags().contains(TAG))) {
+            if (e instanceof net.minecraft.world.entity.Interaction) {
+                if (zone) e.discard();
+                zone = true;
+            } else if (!b.entities.contains(e.getUUID())) {
+                e.discard();
+            }
+        }
+    }
+
     // ---------- animation ----------
 
     /**
@@ -190,6 +206,7 @@ final class MachineEntities {
             spawn(level, b);
             return true;
         }
+        if ((step + b.id) % 8 == 0) purge(level, b);
         if (b.full()) return false;
         int t = step + b.id * 7;          // décalage : deux bâtiments voisins ne bougent pas à l'unisson
         for (int i = 0; i < parts.length; i++) {
