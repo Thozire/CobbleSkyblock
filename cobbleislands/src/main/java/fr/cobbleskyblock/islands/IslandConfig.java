@@ -12,28 +12,34 @@ import java.nio.file.Path;
 
 /** Réglages modifiables dans config/cobbleislands.json (rechargés au redémarrage). */
 public class IslandConfig {
-    /** Distance entre deux îles (en blocs). Ne pas changer une fois des îles créées. */
-    public int espacement = 1024;
-    /** Hauteur du haut de l'île de départ. */
-    public int hauteur = 100;
-    /** Modèle de l'île de départ (structure). Sauvegarde ta propre île avec un bloc de structure sous ce nom pour la remplacer. */
-    public String modele = "cobbleislands:ile_depart";
-    /** Demi-largeur de la zone constructible pour chaque niveau d'île (niveau 1 = premier chiffre). */
-    public int[] taillesParNiveau = {20, 35, 50, 75, 100};
-    /** Nombre maximum de membres (chef compris) pour chaque niveau d'équipe. */
+    /** Distance entre deux domaines (en blocs). Ne pas changer une fois des royaumes créés. */
+    public int espacement = 512;
+    /** Hauteur du sol des domaines (la dimension est plate : herbe à y=-1). */
+    public int hauteur = 0;
+    /** Structure du campement de départ. */
+    public String modele = "cobbleislands:campement";
+    /** Demi-largeur du domaine pour chaque niveau. */
+    public int[] taillesParNiveau = {24, 40, 60, 80, 100};
+    /** Prix (écus) pour atteindre chaque niveau de domaine (le premier est gratuit). */
+    public int[] coutTaille = {0, 2000, 8000, 25000, 60000};
+    /** Nombre maximum de membres (seigneur compris) par niveau d'équipe. */
     public int[] membresParNiveau = {3, 4, 5, 6};
-    /** Ramène sur son île un joueur qui tombe dans le vide (au lieu de mourir). */
-    public boolean sauvetageVide = true;
-    /** Les îles sont ouvertes aux visites par défaut. */
+    /** Prix (écus) pour chaque niveau d'équipe. */
+    public int[] coutMembres = {0, 1500, 5000, 15000};
+    /** Écus donnés à la création d'un royaume. */
+    public int ecusDepart = 250;
+    /** Production quand aucun membre n'est connecté (1.0 = 100 %). */
+    public double productionHorsLigne = 0.5;
+    /** Les domaines sont ouverts aux visites par défaut. */
     public boolean visitesOuvertesParDefaut = true;
-    /** Modèle du spawn (île hub commune), construit au premier démarrage dans l'Overworld. */
-    public String modeleSpawn = "cobbleislands:spawn";
-    /** Hauteur du sol du spawn. */
+    /** Structure de la capitale (spawn), construite au premier démarrage. */
+    public String modeleSpawn = "cobbleislands:capitale";
+    /** Hauteur du sol de la capitale. */
     public int hauteurSpawn = 100;
-    /** Rayon protégé autour du spawn (seuls les opérateurs peuvent y construire). */
-    public int protectionSpawn = 48;
-    /** Resource pack envoyé aux joueurs à la connexion (menus, machine à fusion). Vide = désactivé. */
-    public String resourcePack = "https://raw.githubusercontent.com/Thozire/CobbleSkyblock/main/resourcepacks/FusionMachinePack.zip";
+    /** Rayon protégé autour de la capitale. */
+    public int protectionSpawn = 64;
+    /** Resource pack envoyé aux joueurs à la connexion (menus, icônes). Vide = désactivé. */
+    public String resourcePack = "https://raw.githubusercontent.com/Thozire/CobbleSkyblock/main/resourcepacks/RoyaumesPack.zip";
     /** Le pack est-il obligatoire pour jouer ? */
     public boolean resourcePackObligatoire = true;
     /** Durée de validité d'une invitation (secondes). */
@@ -42,7 +48,7 @@ public class IslandConfig {
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().disableHtmlEscaping().create();
 
     public static IslandConfig load() {
-        Path p = FabricLoader.getInstance().getConfigDir().resolve("cobbleislands.json");
+        Path p = FabricLoader.getInstance().getConfigDir().resolve("royaumes.json");
         IslandConfig cfg = new IslandConfig();
         try {
             if (Files.exists(p)) {
@@ -63,6 +69,10 @@ public class IslandConfig {
     public int radiusFor(int level) {
         return taillesParNiveau[Math.max(0, Math.min(level, taillesParNiveau.length) - 1)];
     }
+
+    public int sizeCost(int level) { return level >= 1 && level <= coutTaille.length ? coutTaille[level - 1] : -1; }
+
+    public int membersCost(int level) { return level >= 1 && level <= coutMembres.length ? coutMembres[level - 1] : -1; }
 
     public int membersFor(int level) {
         return membresParNiveau[Math.max(0, Math.min(level, membresParNiveau.length) - 1)];

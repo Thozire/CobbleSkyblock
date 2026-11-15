@@ -208,6 +208,13 @@ def slot_xy(slot):
     r, c = divmod(slot, 9)
     return OX + 8 + 18 * c, OY + 18 + 18 * r
 
+def small_card(img, slot, accent="wood"):
+    d = ImageDraw.Draw(img)
+    x, y = slot_xy(slot)
+    rim = {"wood": (110, 72, 40), "gold": (214, 160, 50), "red": (160, 40, 44), "green": (70, 120, 60), "blue": (50, 80, 140)}[accent]
+    d.rounded_rectangle([u(x - 1), u(y - 1), u(x + 17), u(y + 17)], radius=u(2), fill=rim + (255,), outline=(50, 28, 14, 255), width=S)
+    d.rounded_rectangle([u(x), u(y), u(x + 16), u(y + 16)], radius=u(1.5), fill=(214, 190, 140, 235))
+
 def card(img, slot, accent="wood", label=None):
     d = ImageDraw.Draw(img)
     x, y = slot_xy(slot)
@@ -265,9 +272,12 @@ def page(cards):
     pennant(img, OX - 20, OY - 18, (40, 70, 150), 30, "tower")
     pennant(img, OX + 196, OY - 18, (150, 34, 40), 30, "crown")
     torch(img, OX - 19, OY + 100); torch(img, OX + 195, OY + 100)
-    # cartes
+    # cartes (accent suivi de « - » = petite carte de grille)
     for slot, (accent, label) in cards.items():
-        card(img, slot, accent, label)
+        if accent.endswith("-"):
+            small_card(img, slot, accent[:-1])
+        else:
+            card(img, slot, accent, label)
     # barre en fer #404040 (cache le mot « Inventaire » du jeu)
     bar = [u(OX + 2), u(OY + 127), u(OX + 174), u(OY + 137)]
     d.rounded_rectangle([bar[0], bar[1] - S, bar[2], bar[3] + S], radius=u(2), fill=(30, 30, 34, 255))
@@ -416,6 +426,227 @@ def i_banner():
     pts = [(40, 70), (40, 44), (52, 58), (64, 36), (76, 58), (88, 44), (88, 70)]
     d.polygon(pts, fill=GOLD)
     return fin(im)
+
+
+# ---------- icônes supplémentaires ----------
+def arrow(d, left, col):
+    pts = [(100, 52), (56, 52), (56, 28), (14, 64), (56, 100), (56, 76), (100, 76)]
+    if not left: pts = [(128 - x, y) for x, y in pts]
+    d.polygon(pts, fill=col)
+
+@icon(7213)
+def i_back():
+    im = cv(); d = ImageDraw.Draw(im); arrow(d, True, (236, 220, 186, 255)); return fin(im)
+
+@icon(7214)
+def i_prev():
+    im = cv(); d = ImageDraw.Draw(im); arrow(d, True, GOLD); return fin(im)
+
+@icon(7215)
+def i_next():
+    im = cv(); d = ImageDraw.Draw(im); arrow(d, False, GOLD); return fin(im)
+
+@icon(7216)
+def i_yes():
+    im = cv(); d = ImageDraw.Draw(im)
+    d.line([(24, 66), (52, 96), (106, 32)], fill=GREEN, width=24, joint="curve"); return fin(im)
+
+@icon(7217)
+def i_no():
+    im = cv(); d = ImageDraw.Draw(im)
+    d.line([(30, 30), (98, 98)], fill=RED, width=22); d.line([(98, 30), (30, 98)], fill=RED, width=22); return fin(im)
+
+@icon(7218)  # récolter : panier
+def i_harvest():
+    im = cv(); d = ImageDraw.Draw(im)
+    d.arc([30, 14, 98, 86], 180, 360, fill=WOOD_D, width=10)
+    for x, col in ((40, (230, 200, 60, 255)), (60, (232, 120, 40, 255)), (80, (200, 60, 60, 255))):
+        d.ellipse([x - 14, 40, x + 14, 66], fill=col)
+    d.polygon([(18, 56), (110, 56), (96, 112), (32, 112)], fill=WOOD)
+    for y in (68, 84, 100): d.line([(26, y), (102, y)], fill=WOOD_D, width=5)
+    return fin(im)
+
+@icon(7219)  # vendre : pile d'écus
+def i_sell():
+    im = cv(); d = ImageDraw.Draw(im)
+    for k, y in enumerate((96, 80, 64, 48)):
+        d.ellipse([30, y, 98, y + 24], fill=GOLD); d.ellipse([30, y - 6, 98, y + 18], fill=GOLD_L)
+    d.ellipse([44, 36, 84, 54], fill=GOLD)
+    return fin(im)
+
+@icon(7220)  # démolir : pioche cassante
+def i_demolish():
+    im = cv(); d = ImageDraw.Draw(im)
+    d.line([(36, 108), (92, 36)], fill=WOOD, width=14)
+    d.arc([22, 8, 110, 76], 200, 340, fill=STONE, width=16)
+    for x, y in ((18, 96), (104, 100), (60, 116)): d.polygon([(x, y), (x + 10, y - 8), (x + 14, y + 4)], fill=RED)
+    return fin(im)
+
+@icon(7221)  # scierie : bûches + scie
+def i_sawmill():
+    im = cv(); d = ImageDraw.Draw(im)
+    for k, (x, y) in enumerate(((24, 70), (64, 70), (44, 40))):
+        d.rounded_rectangle([x, y, x + 40, y + 30], radius=12, fill=WOOD)
+        d.ellipse([x + 26, y + 2, x + 44, y + 28], fill=(214, 170, 110, 255)); d.ellipse([x + 31, y + 9, x + 39, y + 21], fill=WOOD_D)
+    d.polygon([(70, 12), (118, 12), (118, 26), (70, 26)], fill=STONE)
+    for x in range(72, 118, 8): d.polygon([(x, 26), (x + 4, 34), (x + 8, 26)], fill=STONE)
+    return fin(im)
+
+@icon(7222)  # mine : pioche + minerai
+def i_mine():
+    im = cv(); d = ImageDraw.Draw(im)
+    d.polygon([(12, 110), (40, 50), (88, 40), (118, 96), (100, 116)], fill=STONE_D)
+    for x, y, c in ((44, 72, (40, 40, 44, 255)), (70, 86, (220, 180, 140, 255)), (90, 66, (240, 210, 80, 255))):
+        d.rectangle([x, y, x + 12, y + 12], fill=c)
+    d.line([(30, 100), (96, 22)], fill=WOOD, width=12)
+    d.arc([46, 0, 126, 60], 200, 330, fill=(200, 200, 210, 255), width=14)
+    return fin(im)
+
+@icon(7223)  # ferme : gerbe de blé
+def i_farm():
+    im = cv(); d = ImageDraw.Draw(im)
+    for k in range(-3, 4):
+        x = 64 + k * 9
+        d.line([(64, 108), (x, 30)], fill=(214, 180, 70, 255), width=6)
+        d.ellipse([x - 7, 14, x + 7, 40], fill=(240, 206, 90, 255))
+    d.rectangle([48, 70, 80, 82], fill=RED)
+    return fin(im)
+
+@icon(7224)  # inviter : parchemin + plume
+def i_invite():
+    im = cv(); d = ImageDraw.Draw(im)
+    d.rounded_rectangle([20, 26, 92, 110], radius=8, fill=(240, 222, 180, 255))
+    for y in (46, 62, 78): d.line([(32, y), (80, y)], fill=(170, 140, 100, 255), width=5)
+    d.polygon([(70, 96), (118, 12), (124, 20), (82, 100)], fill=(250, 250, 255, 255))
+    d.line([(74, 98), (60, 112)], fill=(40, 30, 30, 255), width=5)
+    return fin(im)
+
+@icon(7225)  # verrouillé : cadenas en fer
+def i_locked():
+    im = cv(); d = ImageDraw.Draw(im)
+    d.rounded_rectangle([40, 18, 88, 72], radius=22, outline=STONE, width=12)
+    d.rounded_rectangle([26, 56, 102, 116], radius=10, fill=STONE_D)
+    d.ellipse([56, 74, 72, 90], fill=(40, 36, 46, 255)); d.rectangle([61, 84, 67, 102], fill=(40, 36, 46, 255))
+    return fin(im)
+
+@icon(7226)  # vide
+def i_empty():
+    im = cv(); d = ImageDraw.Draw(im)
+    d.ellipse([20, 20, 108, 108], outline=(150, 130, 100, 255), width=12)
+    d.line([(38, 90), (90, 38)], fill=(150, 130, 100, 255), width=12); return fin(im)
+
+@icon(7227)  # fonder : drapeau planté
+def i_found():
+    im = cv(); d = ImageDraw.Draw(im)
+    d.ellipse([16, 96, 112, 122], fill=GREEN)
+    d.rectangle([34, 8, 44, 108], fill=WOOD_D)
+    d.polygon([(44, 12), (112, 30), (44, 62)], fill=RED)
+    crown(d, 0, 0, 0, (0, 0, 0)) if False else None
+    d.polygon([(56, 34), (60, 24), (66, 32), (72, 22), (76, 36)], fill=GOLD)
+    return fin(im)
+
+@icon(7228)  # agrandir : carte + flèches
+def i_expand():
+    im = cv(); d = ImageDraw.Draw(im)
+    d.rectangle([34, 34, 94, 94], fill=GREEN); d.rectangle([34, 34, 94, 94], outline=(60, 110, 50, 255), width=6)
+    for (x, y, dx, dy) in ((10, 10, 1, 1), (118, 10, -1, 1), (10, 118, 1, -1), (118, 118, -1, -1)):
+        d.polygon([(x, y), (x + dx * 28, y), (x, y + dy * 28)], fill=GOLD)
+    return fin(im)
+
+@icon(7229)  # portes ouvertes
+def i_open():
+    im = cv(); d = ImageDraw.Draw(im)
+    d.pieslice([24, 14, 104, 94], 180, 360, fill=STONE); d.rectangle([24, 54, 104, 116], fill=STONE)
+    d.pieslice([40, 30, 88, 78], 180, 360, fill=(120, 200, 110, 255)); d.rectangle([40, 54, 88, 116], fill=(120, 200, 110, 255))
+    d.polygon([(40, 54), (26, 62), (26, 116), (40, 116)], fill=WOOD); d.polygon([(88, 54), (102, 62), (102, 116), (88, 116)], fill=WOOD)
+    return fin(im)
+
+@icon(7230)  # portes fermées
+def i_closed():
+    im = cv(); d = ImageDraw.Draw(im)
+    d.pieslice([24, 14, 104, 94], 180, 360, fill=STONE); d.rectangle([24, 54, 104, 116], fill=STONE)
+    d.pieslice([40, 30, 88, 78], 180, 360, fill=WOOD); d.rectangle([40, 54, 88, 116], fill=WOOD)
+    d.line([(64, 30), (64, 116)], fill=WOOD_D, width=4)
+    for y in (64, 90): d.rectangle([40, y, 88, y + 6], fill=(60, 60, 66, 255))
+    return fin(im)
+
+@icon(7231)  # tout vendre : charrette
+def i_cart():
+    im = cv(); d = ImageDraw.Draw(im)
+    d.polygon([(14, 46), (114, 46), (102, 88), (26, 88)], fill=WOOD)
+    for x, col in ((34, GOLD), (56, (214, 120, 60, 255)), (78, (120, 180, 80, 255)), (96, GOLD_L)):
+        d.ellipse([x - 12, 26, x + 12, 50], fill=col)
+    for cx in (38, 92):
+        d.ellipse([cx - 16, 80, cx + 16, 112], fill=WOOD_D); d.ellipse([cx - 6, 90, cx + 6, 102], fill=STONE)
+    return fin(im)
+
+@icon(7232)  # couronne
+def i_crown():
+    im = cv(); d = ImageDraw.Draw(im)
+    d.polygon([(14, 100), (14, 36), (40, 68), (64, 24), (88, 68), (114, 36), (114, 100)], fill=GOLD)
+    d.rectangle([14, 92, 114, 108], fill=(214, 160, 40, 255))
+    for x, c in ((40, RED), (64, BLUE), (88, GREEN)): d.ellipse([x - 7, 92, x + 7, 106], fill=c)
+    return fin(im)
+
+@icon(7233)  # invitation : lettre scellée
+def i_letter():
+    im = cv(); d = ImageDraw.Draw(im)
+    d.rectangle([14, 32, 114, 100], fill=(240, 222, 180, 255))
+    d.polygon([(14, 32), (64, 72), (114, 32)], fill=(222, 198, 150, 255))
+    d.ellipse([50, 58, 78, 86], fill=RED); crown(d, 0, 0, 0, (0, 0, 0)) if False else None
+    return fin(im)
+
+# ---------- pages ----------
+LIST_SLOTS = [9 + r * 9 + c for r in range(4) for c in range(1, 8)]
+PAGES = {
+    "main": ("\ue020", {0: ("wood", None), 4: ("gold", None), 8: ("red", None),
+        19: ("green", "Mon domaine"), 21: ("wood", "Bâtiments"), 23: ("gold", "Marché"), 25: ("blue", "Équipe"),
+        37: ("green", "Améliorer"), 39: ("gold", "Classement"), 41: ("red", "Capitale"), 43: ("blue", "Visiter")}),
+    "list": ("\ue021", {**{s: ("wood-", None) for s in LIST_SLOTS}, 45: ("wood-", None), 48: ("wood-", None),
+        49: ("gold-", None), 50: ("wood-", None), 53: ("red-", None)}),
+    "building": ("\ue022", {4: ("gold", None), 8: ("red", None),
+        19: ("green", "Récolter"), 21: ("gold", "Vendre"), 23: ("green", "Améliorer"), 25: ("red", "Démolir"),
+        **{s: ("wood-", None) for s in range(37, 44)}, 45: ("wood-", None)}),
+    "domain": ("\ue023", {4: ("gold", None), 8: ("red", None),
+        20: ("green", "Agrandir"), 22: ("blue", "Visites"), 24: ("blue", "Équipe"), 40: ("red", None), 45: ("wood-", None)}),
+    "confirm": ("\ue024", {13: ("gold", None), 29: ("green", "Confirmer"), 33: ("red", "Annuler")}),
+    "start": ("\ue025", {4: ("gold", None), 8: ("red", None),
+        21: ("green", "Fonder"), 23: ("gold", "Invitation"), 39: ("red", "Capitale"), 41: ("blue", "Visiter")}),
+}
+
+def build_pack(out):
+    tex = os.path.join(out, "assets/cobbleislands/textures/gui"); os.makedirs(tex, exist_ok=True)
+    providers = [{"type": "space", "advances": {"\ue001": -(8 + OX), "\ue002": -(W + 1 - OX - 16)}}]
+    for name, (ch, cards) in PAGES.items():
+        page(cards).save(os.path.join(tex, name + ".png"))
+        providers.append({"type": "bitmap", "file": f"cobbleislands:gui/{name}.png", "height": H, "ascent": 13 + OY, "chars": [ch]})
+    fdir = os.path.join(out, "assets/cobbleislands/font"); os.makedirs(fdir, exist_ok=True)
+    json.dump({"providers": providers}, open(os.path.join(fdir, "gui.json"), "w"), ensure_ascii=False, indent=1)
+    idir = os.path.join(out, "assets/cobbleislands/textures/item/ui"); os.makedirs(idir, exist_ok=True)
+    mdir = os.path.join(out, "assets/cobbleislands/models/item/ui"); os.makedirs(mdir, exist_ok=True)
+    entries = []
+    for cmd, f in sorted(ICONS.items()):
+        f().save(os.path.join(idir, f"{cmd}.png"))
+        json.dump({"parent": "minecraft:item/generated", "textures": {"layer0": f"cobbleislands:item/ui/{cmd}"}}, open(os.path.join(mdir, f"{cmd}.json"), "w"))
+        entries.append((cmd, f"cobbleislands:item/ui/{cmd}"))
+    os.makedirs(os.path.join(out, "assets/minecraft/models/item"), exist_ok=True)
+    os.makedirs(os.path.join(out, "assets/minecraft/items"), exist_ok=True)
+    json.dump({"parent": "minecraft:item/generated", "textures": {"layer0": "minecraft:item/paper"},
+               "overrides": [{"predicate": {"custom_model_data": c}, "model": m} for c, m in entries]},
+              open(os.path.join(out, "assets/minecraft/models/item/paper.json"), "w"), indent=1)
+    json.dump({"model": {"type": "minecraft:range_dispatch", "property": "minecraft:custom_model_data", "index": 0,
+               "fallback": {"type": "minecraft:model", "model": "minecraft:item/paper"},
+               "entries": [{"threshold": c, "model": {"type": "minecraft:model", "model": m}} for c, m in entries]}},
+              open(os.path.join(out, "assets/minecraft/items/paper.json"), "w"), indent=1)
+    json.dump({"pack": {"pack_format": 34, "supported_formats": {"min_inclusive": 34, "max_inclusive": 99},
+               "description": "§6Royaumes §7- menus et icônes"}}, open(os.path.join(out, "pack.mcmeta"), "w"), ensure_ascii=False, indent=1)
+    # icône du pack : bannière
+    ICONS[7212]().resize((128, 128), Image.NEAREST).save(os.path.join(out, "pack.png"))
+    return len(entries)
+
+if __name__ == "__main__" and len(sys.argv) > 1 and sys.argv[1] == "--pack":
+    print("icônes :", build_pack(sys.argv[2]))
+    sys.exit(0)
 
 if __name__ == "__main__":
     out = sys.argv[1] if len(sys.argv) > 1 else "/home/claude/rp/med"
