@@ -57,9 +57,10 @@ public class IslandConfig {
         try {
             if (Files.exists(p)) {
                 try (Reader r = Files.newBufferedReader(p, StandardCharsets.UTF_8)) {
-                    IslandConfig read = GSON.fromJson(r, IslandConfig.class);
+                    com.google.gson.JsonObject raw = com.google.gson.JsonParser.parseReader(r).getAsJsonObject();
+                    IslandConfig read = GSON.fromJson(raw, IslandConfig.class);
                     if (read != null) cfg = read;
-                    if (cfg.version < 2) {             // passage aux îles flottantes
+                    if (!raw.has("version") || cfg.version < 2) {             // passage aux îles flottantes
                         IslandConfig def = new IslandConfig();
                         cfg.hauteur = def.hauteur;
                         cfg.taillesParNiveau = def.taillesParNiveau;
