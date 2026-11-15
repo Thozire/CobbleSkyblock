@@ -23,8 +23,9 @@ def scierie():
     b.box((2, 2, 23), (5, 24, 26), log("dark_oak"))                      # poteau intermédiaire côté ouvert
     b.box((31, 2, 22.5), (34, 15.2, 25.5), log("dark_oak"))             # côté roue : poteau en deux parties,
     b.box((31, 20.8, 22.5), (34, 24, 25.5), log("dark_oak"))            # l'arbre de la roue tourne dans le palier
-    b.box((30.7, 15.2, 22.2), (34.3, 16, 25.8), "iron_dark", tile=False); b.box((30.7, 20, 22.2), (34.3, 20.8, 25.8), "iron_dark", tile=False)
-    for z in (22.2, 25.3): b.box((30.9, 16, z), (34.1, 20, z + 0.5), "iron_dark", tile=False)
+    b.box((31, 15.2, 22.5), (34, 16.5, 25.5), log("dark_oak"), tile=False)    # le poteau est percé juste à la taille
+    b.box((31, 19.5, 22.5), (34, 20.8, 25.5), log("dark_oak"), tile=False)    # de l'arbre (huit pans, rayon 1,41)
+    for (za, zb) in ((22.5, 22.55), (25.45, 25.5)): b.box((31, 16.5, za), (34, 19.5, zb), log("dark_oak"), tile=False)
     for z in (4, 43):
         beam(b, (1, 24, z), (35, 26.5, z + 3))                           # entraits
     for x in (2, 31):
@@ -52,17 +53,20 @@ def scierie():
     for z in (7, 16, 32, 40.5):
         for x in (13, 21.5): b.box((x, 2, z), (x + 1.5, 7, z + 1.5), SP)
         b.box((12.5, 4.5, z + 0.2), (23.5, 5.7, z + 1.3), SP)
-    for x in (9.5, 22.5):                                                # glissières du cadre de scie
-        b.box((x, 2, 22), (x + 4, 7.5, 26), {"*": SP, "up": "hole"})
+    for x in (10.5, 23.5):                                               # guides du cadre de scie : le montant
+        b.box((x - 0.6, 2, 22.2), (x + 2.6, 3, 25.8), SP)                  # coulisse entre deux planches
+        for (za, zb) in ((22.2, 22.95), (25.05, 25.8)): b.box((x - 0.6, 3, za), (x + 2.6, 12, zb), SP, tile=False)
     # --- décor (allégé : Thozire a retiré la pile de planches, le billot et les grumes en attente)
     b.box((14.5, 2, 20.5), (21.5, 3, 27.5), "sawdust"); b.box((16, 3, 22), (20, 3.9, 26), "sawdust")
 
+    b.box((25.8, 15.6, 22.3), (29.6, 20.6, 25.7), DO)                    # carter de l'excentrique, fixe
+    b.box((25.6, 20.6, 22.1), (29.8, 21, 25.9), SP, tile=False)
+
     # --- scie à cadre (monte et descend)
     saw = Model()
-    for x in (10.5, 23.5): saw.box((x, 4, 23), (x + 2, 23, 25), DO)
+    for x in (10.5, 23.5): saw.box((x, 3, 23.05), (x + 2, 23, 24.95), DO)
     saw.box((9.5, 21, 22.7), (29, 23.6, 25.3), DO)                       # la traverse va jusqu'au-dessus de la came
-    saw.box((26, 20.3, 22.9), (29, 21, 25.1), "iron_dark", tile=False)   # patin soulevé par la came
-    saw.box((17, 20, 22.9), (19, 21, 25.1), "iron_dark", tile=False)
+    saw.box((27, 16.6, 23.3), (28.4, 21.05, 24.7), DO, tile=False)       # tige de bielle : toujours dans le carter
     saw.box((17.8, 4, 22.5), (18.2, 21, 25.5), {"east": "blade", "west": "blade"}, tile=False,
             uv={"west": [0, 0, 3, 16], "east": [3, 0, 0, 16]})
     saw_keys = [key(1, t=(0, 3.4, 0)), key(1)]
@@ -79,8 +83,6 @@ def scierie():
     w = Model(); ctr = (42.0, 18.0, 24.0)
     w.box((26, 17, 23), (47.6, 19, 25), DO, tile=False)
     w.box((26.05, 17.05, 23.05), (47.55, 18.95, 24.95), DO, rot=("x", 45, ctr), tile=False)        # arbre à huit pans
-    disc(w, (27.5, 18, 24), 2.1, 26.3, 28.7, "iron_dark")                                            # came qui soulève la scie
-    w.box((26.6, 18, 23.2), (28.4, 20.25, 24.8), "iron_dark", tile=False)
     disc(w, ctr, 3.4, 37.8, 46.2, DO)
     for (xa, xb) in ((38.5, 40), (44, 45.5)):
         for i, ang in enumerate((0, 45)):

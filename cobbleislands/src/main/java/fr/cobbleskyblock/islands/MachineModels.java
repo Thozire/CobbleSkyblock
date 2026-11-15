@@ -5,7 +5,7 @@ final class MachineModels {
     private MachineModels() {}
 
     /** Version des modèles : un bâtiment posé avec une autre version est reconstruit. */
-    static final int VERSION = 4;
+    static final int VERSION = 5;
 
     /**
      * Pièce d'un bâtiment : modèle, pivot (repère de dessin, 1/16 de bloc), pleine lumière, vacillement
