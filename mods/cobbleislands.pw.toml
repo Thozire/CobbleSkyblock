@@ -1,8 +1,8 @@
 name = "CobbleIslands"
-filename = "cobbleislands-0.7.1.jar"
+filename = "cobbleislands-0.7.2.jar"
 side = "server"
 
 [download]
-url = "https://raw.githubusercontent.com/Thozire/CobbleSkyblock/main/builds/cobbleislands-0.7.1.jar"
+url = "https://raw.githubusercontent.com/Thozire/CobbleSkyblock/main/builds/cobbleislands-0.7.2.jar"
 hash-format = "sha256"
-hash = "43a86f7506c80cd303c72d31f7702a79486e7ef09de815f3e32c965975fae54c"
+hash = "c192f0b143e812274aec6b98504840109aa5a6668695d4a518516fe1c7c69ae9"
