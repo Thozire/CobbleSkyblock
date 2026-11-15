@@ -9,11 +9,11 @@ import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.SimpleMenuProvider;
-import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.inventory.ChestMenu;
+import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.ClickType;
 import net.minecraft.world.inventory.MenuType;
+import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 
 import java.util.HashMap;
@@ -21,20 +21,39 @@ import java.util.Map;
 import java.util.function.Consumer;
 
 /**
- * Menu "coffre" 6 rangées dont les objets sont des boutons. Rien ne peut être
- * pris ni déposé. Le titre utilise la police du resource pack pour afficher le
- * fond personnalisé (glyphe  décalé par des espaces négatifs).
+ * Menu « coffre » 6 rangées dont les objets sont des boutons.
+ * <ul>
+ * <li>Le fond est un glyphe de la police du resource pack, placé dans le titre.</li>
+ * <li>Les 36 cases du bas (l'inventaire du joueur) pointent vers un inventaire vide :
+ * le joueur ne voit pas ses objets dans le menu, et ses vrais objets ne sont jamais touchés.
+ * À la fermeture, on renvoie son vrai inventaire à son client.</li>
+ * </ul>
  */
-public class IslandMenu extends ChestMenu {
+public class IslandMenu extends AbstractContainerMenu {
     private static final ResourceLocation GUI_FONT = ResourceLocation.fromNamespaceAndPath("cobbleislands", "gui");
+
+    /** Fonds disponibles (un glyphe par page, voir tools/medieval_gui.py). */
+    public enum Page {
+        MAIN(''), LIST(''), BUILDING(''), DOMAIN(''), CONFIRM(''), START('');
+        final char glyph;
+        Page(char g) { glyph = g; }
+    }
+
+    private final SimpleContainer buttons = new SimpleContainer(54);
     private final Map<Integer, Consumer<ServerPlayer>> actions = new HashMap<>();
 
-    public IslandMenu(int id, Inventory inv) {
-        super(MenuType.GENERIC_9x6, id, inv, new SimpleContainer(54), 6);
+    public IslandMenu(int id) {
+        super(MenuType.GENERIC_9x6, id);
+        for (int r = 0; r < 6; r++)
+            for (int c = 0; c < 9; c++) addSlot(new Slot(buttons, c + r * 9, 8 + c * 18, 18 + r * 18));
+        SimpleContainer hidden = new SimpleContainer(36);
+        for (int r = 0; r < 3; r++)
+            for (int c = 0; c < 9; c++) addSlot(new Slot(hidden, 9 + c + r * 9, 8 + c * 18, 140 + r * 18));
+        for (int c = 0; c < 9; c++) addSlot(new Slot(hidden, c, 8 + c * 18, 198));
     }
 
     public void set(int slot, ItemStack stack, Consumer<ServerPlayer> action) {
-        getContainer().setItem(slot, stack);
+        buttons.setItem(slot, stack);
         if (action != null) actions.put(slot, action);
         else actions.remove(slot);
     }
@@ -46,11 +65,10 @@ public class IslandMenu extends ChestMenu {
         if (player instanceof ServerPlayer sp && slotId >= 0 && slotId < 54 && type != ClickType.QUICK_CRAFT) {
             Consumer<ServerPlayer> a = actions.get(slotId);
             if (a != null) {
-                sp.playNotifySound(SoundEvents.UI_BUTTON_CLICK.value(), SoundSource.MASTER, 0.5f, 1.2f);
+                sp.playNotifySound(SoundEvents.UI_BUTTON_CLICK.value(), SoundSource.MASTER, 0.5f, 1.0f);
                 a.accept(sp);
             }
         }
-        // on annule tout déplacement d'objet et on resynchronise l'écran du joueur
         setCarried(ItemStack.EMPTY);
         sendAllDataToRemote();
     }
@@ -61,18 +79,25 @@ public class IslandMenu extends ChestMenu {
     @Override
     public boolean stillValid(Player player) { return true; }
 
-    /** Titre : fond personnalisé + texte. */
-    public static Component title(String text) {
-        MutableComponent bg = Component.literal("").withStyle(Style.EMPTY.withFont(GUI_FONT).withColor(0xFFFFFF));
-        return bg.append(Component.literal(text).withStyle(s -> s.withColor(0xF3E8FF).withBold(true)));
+    @Override
+    public void removed(Player player) {
+        super.removed(player);
+        // le client a affiché un inventaire vide : on lui renvoie le vrai
+        if (player instanceof ServerPlayer sp) sp.inventoryMenu.sendAllDataToRemote();
     }
 
-    /** Ouvre un menu rempli par {@code fill}. */
-    public static void open(ServerPlayer p, String title, Consumer<IslandMenu> fill) {
+    /** Titre : fond de la page + texte (police normale). */
+    public static Component title(Page page, String text) {
+        MutableComponent bg = Component.literal("" + page.glyph + "").withStyle(Style.EMPTY.withFont(GUI_FONT).withColor(0xFFFFFF));
+        MutableComponent t = Component.literal(text).withStyle(Style.EMPTY.withFont(Style.DEFAULT_FONT).withColor(0xFFEEC0).withBold(true));
+        return Component.empty().append(bg).append(t);
+    }
+
+    public static void open(ServerPlayer p, Page page, String title, Consumer<IslandMenu> fill) {
         p.openMenu(new SimpleMenuProvider((id, inv, pl) -> {
-            IslandMenu m = new IslandMenu(id, inv);
+            IslandMenu m = new IslandMenu(id);
             fill.accept(m);
             return m;
-        }, title(title)));
+        }, title(page, title)));
     }
 }

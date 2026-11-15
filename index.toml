@@ -6,15 +6,10 @@ hash = "2b3688ec79034dd5d4c26521e1f89906cdd80d1818d6993309cf4acf977173b3"
 metafile = true
 
 [[files]]
-file = "mods/cobblemon.pw.toml"
-hash = "7b456ba44d7ffde560f6a98edb9012fe17a8e47a74ff3701ec9026c07d5b2c62"
-metafile = true
-
-[[files]]
 file = "mods/fabric-api.pw.toml"
 hash = "1ed7a6439d9c3cd9bc8e7db6a4362eb710de0f4da90b619f883e99f5765e96c0"
 metafile = true
 
 [[files]]
-file = "resourcepacks/FusionMachinePack.zip"
-hash = "7a4d1b0502122d1722cb51b82ab7c27e55a3dfc834431ba2c4b16dcc3ec5604d"
+file = "resourcepacks/RoyaumesPack.zip"
+hash = "cd5707924b3963fc496818bb90b8a027c615c21c52b591d310f0cfd8367d0cf9"

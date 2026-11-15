@@ -1,18 +1,27 @@
-# CobbleSkyblock
+# Royaumes
 
-Serveur Minecraft **Cobblemon Skyblock** (Java 1.21.1, Fabric).
+Serveur Minecraft **tycoon médiéval** (Java 1.21.1, Fabric) : fonde ton royaume, construis des bâtiments
+producteurs, vends au marché de la capitale et grimpe au classement. Seul ou en équipe.
 
 ## Jouer
 
-1. Télécharge le launcher : **[CobbleSkyblock-Launcher.exe](https://github.com/Thozire/CobbleSkyblock/raw/main/launcher/CobbleSkyblock-Launcher.exe)**
-2. Lance-le (si Windows affiche « Windows a protégé votre ordinateur » : *Informations complémentaires* → *Exécuter quand même*).
-3. Connecte-toi avec ton compte Microsoft qui possède Minecraft Java, puis clique sur **JOUER**.
+- Minecraft Java **1.21.1** suffit : le serveur envoie lui-même le resource pack (menus, icônes).
+- Launcher dédié : **[CobbleSkyblock-Launcher.exe](https://github.com/Thozire/CobbleSkyblock/raw/main/launcher/CobbleSkyblock-Launcher.exe)** (comptes premium).
 
-Java, Minecraft, Fabric et les mods s'installent et se mettent à jour tout seuls.
-Comptes premium uniquement.
+## Commandes
+
+| Commande | Effet |
+|---|---|
+| `/royaume` (ou `/r`) | menu du royaume |
+| `/royaume go` | aller sur ton domaine |
+| `/royaume construire <scierie\|ferme\|mine>` | poser un bâtiment |
+| `/royaume vendre` | vendre toute la production |
+| `/royaume inviter <joueur>` | inviter dans ta cour |
+| `/capitale` | retourner à la capitale |
 
 ## Contenu du dépôt
 
-- `pack.toml`, `index.toml`, `mods/`, `resourcepacks/`, `world/` : le modpack (packwiz), synchronisé par le launcher et par le serveur.
-- `launcher.json` : adresse du serveur, actus et message affichés dans le launcher.
-- `launcher/` : le launcher Windows. `launcher-src/` : son code source (Go).
+- `cobbleislands/` : le mod serveur (Royaumes), compilé par GitHub Actions et publié dans `builds/`.
+- `tools/` : générateurs du resource pack (`medieval_gui.py`) et des structures (`medieval_structures.py`).
+- `pack.toml`, `index.toml`, `mods/`, `resourcepacks/` : le modpack (packwiz) synchronisé par le serveur et le launcher.
+- `launcher/`, `launcher-src/`, `launcher.json` : le launcher Windows et sa configuration en ligne.
