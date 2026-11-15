@@ -2,7 +2,7 @@ hash-format = "sha256"
 
 [[files]]
 file = "mods/cobbleislands.pw.toml"
-hash = "7c5a7bc4141dd3e8ff532111e303ea546acf94a759c3af6e8e15ff7747decdfd"
+hash = "5bfa8ac7b07a83333541c88a1a5a08bcea87a03f8b0ccb478e4dbfc4ba305349"
 metafile = true
 
 [[files]]
