@@ -27,12 +27,12 @@ def scierie():
         beam(b, (x, 24, 1.5), (x + 3, 26.5, 47))                         # sablières
     beam(b, (16.5, 24, 23), (19.5, 26.5, 26), "dark_oak")
     # jambes de force des poteaux de façade
-    b.box((5, 18, 4.6), (6.4, 26, 6.4), DO, rot=("z", -45, (5, 18, 5.5)))
-    b.box((29.6, 18, 4.6), (31, 26, 6.4), DO, rot=("z", 45, (31, 18, 5.5)))
+    b.box((5, 16, 4.6), (6.4, 28, 6.4), DO, rot=("z", -45, (5, 18, 5.5)))
+    b.box((29.6, 16, 4.6), (31, 28, 6.4), DO, rot=("z", 45, (31, 18, 5.5)))
     # pignon de façade ouvert : poinçon et contrefiches
     b.box((17, 26.5, 4.5), (19, 40, 6.5), DO)
-    b.box((9.3, 27, 4.8), (10.7, 37, 6.2), DO, rot=("z", -45, (10, 27, 5.5)))
-    b.box((25.3, 27, 4.8), (26.7, 37, 6.2), DO, rot=("z", 45, (26, 27, 5.5)))
+    b.box((9.3, 25, 4.8), (10.7, 38, 6.2), DO, rot=("z", -45, (10, 27, 5.5)))
+    b.box((25.3, 25, 4.8), (26.7, 38, 6.2), DO, rot=("z", 45, (26, 27, 5.5)))
     # --- murs : fond plein, côté roue à mi-hauteur, côté opposé ajouré
     b.box((5, 2, 44), (31, 24, 45.2), SP)
     b.box((4.5, 12, 43.5), (31.5, 13.6, 45.6), DO)
@@ -50,16 +50,8 @@ def scierie():
         b.box((12.5, 4.5, z + 0.2), (23.5, 5.7, z + 1.3), SP)
     for x in (9.5, 22.5):                                                # glissières du cadre de scie
         b.box((x, 2, 22), (x + 4, 7.5, 26), {"*": SP, "up": "hole"})
-    # --- décor
-    for i, (dx, col) in enumerate(((0, OAK), (0.6, "mc:stripped_oak_log"), (0, OAK), (0.4, SP))):
-        b.box((5.6 + dx, 2 + 1.6 * i, 29), (10.2 + dx, 3.6 + 1.6 * i, 42), col)                # pile de planches
+    # --- décor (allégé : Thozire a retiré la pile de planches, le billot et les grumes en attente)
     b.box((14.5, 2, 20.5), (21.5, 3, 27.5), "sawdust"); b.box((16, 3, 22), (20, 3.9, 26), "sawdust")
-    b.box((26.2, 2, 30), (30.6, 2.8, 35), "sawdust")
-    b.box((6, 2, 9), (10.5, 7, 13.5), log("oak"))                                               # billot et hache
-    b.box((7.6, 6.5, 10.6), (8.6, 15, 11.6), SP, rot=("z", -22.5, (8, 7, 11)))
-    b.box((6.4, 7, 10.2), (9.4, 9.4, 12), "steel", tile=False)
-    for (x, y) in ((25.8, 2), (28.9, 2), (27.3, 5)):                                           # grumes en attente
-        b.box((x, y, 8.5), (x + 3, y + 3, 21), log("spruce", "z"), uvrot=log_uvrot("z"), tile=False)
     b.box((7.2, 24.2 - 2.4, 4.2), (8.8, 24.2, 4.9), "iron_dark", tile=False)                   # potence de lanterne
     lantern(b, glow, 8, 21.6, 2.8, hang=0.6)
     b.box((7.6, 21.6, 2.2), (8.4, 22.4, 4.4), "iron_dark", tile=False)
@@ -69,7 +61,7 @@ def scierie():
     for x in (10.5, 23.5): saw.box((x, 4, 23), (x + 2, 23, 25), DO)
     saw.box((9.5, 21, 22.7), (26.5, 23.6, 25.3), DO)
     saw.box((17, 20, 22.9), (19, 21, 25.1), "iron_dark", tile=False)
-    saw.box((17.8, 5, 22.5), (18.2, 21, 25.5), {"east": "blade", "west": "blade"}, tile=False,
+    saw.box((17.8, 4, 22.5), (18.2, 21, 25.5), {"east": "blade", "west": "blade"}, tile=False,
             uv={"west": [0, 0, 3, 16], "east": [3, 0, 0, 16]})
     saw_keys = [key(1, t=(0, 2.4, 0)), key(1, t=(0, -1.4, 0))]
 
