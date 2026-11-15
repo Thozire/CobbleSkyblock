@@ -83,7 +83,7 @@ public class IslandManager {
         return Math.abs(pos.getX() - c.getX()) <= r && Math.abs(pos.getZ() - c.getZ()) <= r;
     }
 
-    public int maxMachines(Island is) { return cfg.machinesFor(is.sizeLevel); }
+    public int maxMachines(Island is) { return cfg.machinesFor(is.machineLevel); }
 
     public int maxMembers(Island is) { return cfg.membersFor(is.memberLevel); }
 
@@ -101,9 +101,7 @@ public class IslandManager {
         int id = d.nextId++;
         BlockPos c = center(id);
         Island is = new Island(id, player.getUUID(), player.getGameProfile().getName());
-        IslandGen.generate(level, c, 0, cfg.radiusFor(1), seedOf(is));
-        level.setBlock(c.below(), Blocks.GRASS_BLOCK.defaultBlockState(), Block.UPDATE_CLIENTS);
-        for (int y = 0; y < 3; y++) level.setBlock(c.above(y), Blocks.AIR.defaultBlockState(), Block.UPDATE_CLIENTS);
+        IslandGen.build(level, c, seedOf(is));
         is.home = c;
         is.open = cfg.visitesOuvertesParDefaut;
         is.money = cfg.ecusDepart;
@@ -180,19 +178,23 @@ public class IslandManager {
     public String upgradeSize(Island is) {
         int next = is.sizeLevel + 1;
         int cost = cfg.sizeCost(next);
-        if (cost < 0) return "Ton domaine est déjà au niveau maximum.";
+        if (cost < 0) return "Ton terrain est déjà au niveau maximum.";
         if (is.money < cost) return "Il te manque " + Market.fmt(cost - is.money) + " écus.";
-        int from = cfg.radiusFor(is.sizeLevel);
         is.money -= cost;
-        is.sizeLevel = next;
-        IslandGen.generate(islandsLevel(), center(is.id), from, cfg.radiusFor(next), seedOf(is));
+        is.sizeLevel = next;          // seule la bordure s'écarte : au joueur de bâtir
         data().setDirty();
         return null;
     }
 
-    /** Agrandit l'île jusqu'au rayon de son niveau actuel (commande admin). */
-    public void growIsland(Island is, int fromRadius) {
-        IslandGen.generate(islandsLevel(), center(is.id), fromRadius, cfg.radiusFor(is.sizeLevel), seedOf(is));
+    public String upgradeMachines(Island is) {
+        int next = is.machineLevel + 1;
+        int cost = cfg.machinesCost(next);
+        if (cost < 0) return "Ta limite de bâtiments est déjà au maximum.";
+        if (is.money < cost) return "Il te manque " + Market.fmt(cost - is.money) + " écus.";
+        is.money -= cost;
+        is.machineLevel = next;
+        data().setDirty();
+        return null;
     }
 
     public String upgradeMembers(Island is) {
@@ -269,7 +271,7 @@ public class IslandManager {
         Island is = islandOf(p.getUUID());
         if (is == null) return "Tu n'as pas de royaume.";
         if (is.buildings.size() >= maxMachines(is))
-            return "Limite atteinte (" + maxMachines(is) + " bâtiments) : agrandis ton île pour en poser plus.";
+            return "Limite atteinte (" + maxMachines(is) + " bâtiments) : augmente-la dans « Améliorer ».";
         BlockPos center = pos.relative(p.getDirection(), MachineEntities.RADIUS).immutable();
         for (BlockPos q : MachineEntities.footprint(center)) {
             if (islandAt(q) != is || !inBounds(is, q)) return "Il faut 3x3 blocs sur ton île : éloigne-toi du bord.";
@@ -290,14 +292,24 @@ public class IslandManager {
         return null;
     }
 
-    /** Ramasse une machine : son stock est vendu, l'objet (avec son niveau) revient au joueur. */
+    /** Ramasse une machine : l'objet (avec son niveau) et tout son stock reviennent au joueur. */
     public long pickUp(ServerPlayer p, Island is, Building b) {
-        long gain = Market.sellBuilding(is, b);
+        long n = 0;
+        for (Map.Entry<String, Long> e : b.storage.entrySet()) {
+            long left = e.getValue();
+            int max = Market.item(e.getKey()).getDefaultMaxStackSize();
+            while (left > 0) {
+                int k = (int) Math.min(left, max);
+                give(p, Market.stack(e.getKey(), k));
+                left -= k; n += k;
+            }
+        }
+        b.storage.clear();
         MachineEntities.remove(islandsLevel(), b);
         is.buildings.remove(b);
         data().setDirty();
         give(p, machineItem(b.type, b.level));
-        return gain;
+        return n;
     }
 
     /** Une machine a perdu son bloc (opérateur en créatif) : on la retire proprement. */

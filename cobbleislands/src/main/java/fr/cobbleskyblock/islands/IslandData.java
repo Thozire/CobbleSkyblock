@@ -20,7 +20,7 @@ public class IslandData extends SavedData {
     public boolean spawnBuilt = false;
     public int spawnX, spawnY, spawnZ;
     /** 2 = îles flottantes (les royaumes plats de la version 1 sont abandonnés). */
-    public int version = 2;
+    public int version = 3;
 
     public static IslandData get(MinecraftServer server) {
         return server.overworld().getDataStorage().computeIfAbsent(
@@ -36,10 +36,12 @@ public class IslandData extends SavedData {
         d.spawnZ = tag.getInt("spawnZ");
         int v = tag.getInt("version");
         ListTag list = tag.getList("islands", Tag.TAG_COMPOUND);
-        if (v < 2) {
-            if (!list.isEmpty()) CobbleIslands.LOG.warn("Passage aux îles flottantes : {} ancien(s) royaume(s) plat(s) remis à zéro.", list.size());
+        if (v < 3) {
+            // nouvel îlot de départ : les anciens royaumes sont abandonnés ; les nouveaux prennent des
+            // emplacements neufs (le compteur continue), loin des anciennes îles
+            if (!list.isEmpty()) CobbleIslands.LOG.warn("Nouvelles îles de départ : {} ancien(s) royaume(s) remis à zéro.", list.size());
             list = new ListTag();
-            d.nextId = 1;
+            if (v < 2) d.nextId = 1;
             d.setDirty();
         }
         for (int i = 0; i < list.size(); i++) {

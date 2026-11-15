@@ -17,7 +17,7 @@ from PIL import Image, ImageDraw
 MC = os.environ.get("MC_ASSETS", "/home/claude/mcassets/assets/minecraft") + "/textures/"
 PACK = os.environ.get("ROYAUMES_PACK", "/home/claude/rp/royaumes")
 NS = PACK + "/assets/cobbleislands"
-VERSION = 7            # version des modèles : les machines déjà posées sont reconstruites si elle change
+VERSION = 8            # version des modèles : les machines déjà posées sont reconstruites si elle change
 TICKS_PER_STEP = 5     # le serveur anime toutes les 5 ticks
 
 # ================================================================ textures peintes (16x16)

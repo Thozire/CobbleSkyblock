@@ -21,6 +21,8 @@ public class Island {
     public BlockPos home;
     public int sizeLevel = 1;
     public int memberLevel = 1;
+    /** Niveau de la limite de bâtiments (indépendant de la taille du terrain). */
+    public int machineLevel = 1;
     public boolean open = true;
     public long created = System.currentTimeMillis();
     /** Trésor (écus) partagé par toute l'équipe. */
@@ -76,6 +78,7 @@ public class Island {
         t.putInt("hz", home.getZ());
         t.putInt("sizeLevel", sizeLevel);
         t.putInt("memberLevel", memberLevel);
+        t.putInt("machineLevel", machineLevel);
         t.putBoolean("open", open);
         t.putLong("created", created);
         t.putLong("money", money);
@@ -101,6 +104,7 @@ public class Island {
         is.home = new BlockPos(t.getInt("hx"), t.getInt("hy"), t.getInt("hz"));
         is.sizeLevel = Math.max(1, t.getInt("sizeLevel"));
         is.memberLevel = Math.max(1, t.getInt("memberLevel"));
+        is.machineLevel = Math.max(1, t.getInt("machineLevel"));
         is.open = t.getBoolean("open");
         is.created = t.getLong("created");
         is.money = t.getLong("money");

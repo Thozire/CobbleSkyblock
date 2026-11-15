@@ -5,7 +5,7 @@ final class MachineModels {
     private MachineModels() {}
 
     /** Version des modèles : un bâtiment posé avec une autre version est reconstruit. */
-    static final int VERSION = 7;
+    static final int VERSION = 8;
 
     /**
      * Pièce d'un bâtiment : modèle, pivot (repère de dessin, 1/16 de bloc), pleine lumière, vacillement
@@ -32,7 +32,7 @@ final class MachineModels {
             new Emitter("splash", 42f, 5.5f, 33f, 2, 0.2f, 0.05f, 0.12f, 0f, 2, 1),
     };
 
-    private static final Part[] MOULIN = {
+    private static final Part[] FERME = {
             new Part(7330, 24f, 30f, 14.4f, false, 0f, new float[]{8f, 0f, 0f, 0f, 2f, 90f, 1f, 1f, 1f, 8f, 0f, 0f, 0f, 2f, 180f, 1f, 1f, 1f, 8f, 0f, 0f, 0f, 2f, 270f, 1f, 1f, 1f, 8f, 0f, 0f, 0f, 2f, 360f, 1f, 1f, 1f}),   // ailes
             new Part(7331, 37f, 1f, 5.6f, false, 0f, new float[]{4f, 0f, 0f, 0f, 0f, 5f, 1f, 1f, 1f, 4f, 0f, 0f, 0f, 0f, -2f, 1f, 1f, 1f, 4f, 0f, 0f, 0f, 0f, 4f, 1f, 1f, 1f, 4f, 0f, 0f, 0f, 0f, -5f, 1f, 1f, 1f}),   // ble
             new Part(7332, 13f, 1f, 7.2f, false, 0f, new float[]{8f, 0f, 0f, 0f, 2f, 4f, 1f, 1f, 1f, 8f, 0f, 0f, 0f, 2f, -4f, 1f, 1f, 1f}),   // epouvantail
@@ -40,7 +40,7 @@ final class MachineModels {
             new Part(7334, 24f, 24f, 24f, true, 0f, new float[]{}),   // lumiere
     };
 
-    private static final Emitter[] MOULIN_FX = {
+    private static final Emitter[] FERME_FX = {
             new Emitter("ash", 24f, 9f, 16f, 2, 0.25f, 0.3f, 0.15f, 0f, 4, 0),
             new Emitter("grow", 37f, 12f, 6f, 1, 0.5f, 0.2f, 0.3f, 0f, 10, 3),
     };
@@ -78,7 +78,7 @@ final class MachineModels {
     static int item(String id) {
         return switch (id) {
             case "scierie" -> 7301;
-            case "moulin" -> 7302;
+            case "ferme" -> 7302;
             case "mine" -> 7303;
             case "forge" -> 7304;
             default -> 0;
@@ -89,7 +89,7 @@ final class MachineModels {
     static int base(String id) {
         return switch (id) {
             case "scierie" -> 7311;
-            case "moulin" -> 7312;
+            case "ferme" -> 7312;
             case "mine" -> 7313;
             case "forge" -> 7314;
             default -> 0;
@@ -99,7 +99,7 @@ final class MachineModels {
     static Part[] parts(String id) {
         return switch (id) {
             case "scierie" -> SCIERIE;
-            case "moulin" -> MOULIN;
+            case "ferme" -> FERME;
             case "mine" -> MINE;
             case "forge" -> FORGE;
             default -> new Part[0];
@@ -109,7 +109,7 @@ final class MachineModels {
     static Emitter[] emitters(String id) {
         return switch (id) {
             case "scierie" -> SCIERIE_FX;
-            case "moulin" -> MOULIN_FX;
+            case "ferme" -> FERME_FX;
             case "mine" -> MINE_FX;
             case "forge" -> FORGE_FX;
             default -> new Emitter[0];

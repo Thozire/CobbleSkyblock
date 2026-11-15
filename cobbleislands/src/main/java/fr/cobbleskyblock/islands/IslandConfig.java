@@ -13,19 +13,21 @@ import java.nio.file.Path;
 /** Réglages modifiables dans config/cobbleislands.json (rechargés au redémarrage). */
 public class IslandConfig {
     /** Version du fichier (migration automatique des anciennes valeurs). */
-    public int version = 2;
+    public int version = 3;
     /** Distance entre deux domaines (en blocs). Ne pas changer une fois des royaumes créés. */
     public int espacement = 512;
     /** Hauteur où l'on marche sur les îles (la dimension est vide). */
     public int hauteur = 100;
-    /** Rayon de l'île pour chaque niveau. */
-    public int[] taillesParNiveau = {12, 18, 26, 36, 48};
-    /** Marge constructible au-delà du bord de l'île (bordure visible). */
-    public int marge = 4;
-    /** Nombre maximum de machines par niveau d'île. */
-    public int[] machinesParNiveau = {4, 6, 9, 13, 18};
-    /** Prix (écus) pour atteindre chaque niveau de domaine (le premier est gratuit). */
-    public int[] coutTaille = {0, 2000, 8000, 25000, 60000};
+    /** Demi-largeur du terrain constructible (distance du centre à la bordure) pour chaque niveau. L'îlot de départ fait 13 de rayon. */
+    public int[] taillesParNiveau = {16, 22, 30, 40, 52, 64};
+    /** Marge ajoutée à la bordure. */
+    public int marge = 0;
+    /** Prix (écus) pour atteindre chaque niveau de terrain (le premier est gratuit). */
+    public int[] coutTaille = {0, 1500, 5000, 15000, 40000, 90000};
+    /** Nombre maximum de bâtiments par niveau (amélioration indépendante du terrain). */
+    public int[] machinesParNiveau = {3, 5, 7, 10, 13, 16, 20};
+    /** Prix (écus) pour chaque niveau de limite de bâtiments. */
+    public int[] coutMachines = {0, 1000, 3000, 8000, 20000, 45000, 90000};
     /** Nombre maximum de membres (seigneur compris) par niveau d'équipe. */
     public int[] membresParNiveau = {3, 4, 5, 6};
     /** Prix (écus) pour chaque niveau d'équipe. */
@@ -68,7 +70,17 @@ public class IslandConfig {
                         cfg.machinesParNiveau = def.machinesParNiveau;
                         cfg.version = 2;
                     }
+                    if (cfg.version < 3) {                                    // améliorations indépendantes, îlot fixe
+                        IslandConfig def = new IslandConfig();
+                        cfg.taillesParNiveau = def.taillesParNiveau;
+                        cfg.coutTaille = def.coutTaille;
+                        cfg.marge = def.marge;
+                        cfg.machinesParNiveau = def.machinesParNiveau;
+                        cfg.coutMachines = def.coutMachines;
+                        cfg.version = 3;
+                    }
                     if (cfg.machinesParNiveau == null) cfg.machinesParNiveau = new IslandConfig().machinesParNiveau;
+                    if (cfg.coutMachines == null) cfg.coutMachines = new IslandConfig().coutMachines;
                 }
             }
             try (Writer w = Files.newBufferedWriter(p, StandardCharsets.UTF_8)) {
@@ -85,6 +97,8 @@ public class IslandConfig {
     }
 
     public int sizeCost(int level) { return level >= 1 && level <= coutTaille.length ? coutTaille[level - 1] : -1; }
+
+    public int machinesCost(int level) { return level >= 1 && level <= coutMachines.length ? coutMachines[level - 1] : -1; }
 
     public int membersCost(int level) { return level >= 1 && level <= coutMembres.length ? coutMembres[level - 1] : -1; }
 

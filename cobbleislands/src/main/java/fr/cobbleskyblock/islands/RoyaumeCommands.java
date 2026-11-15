@@ -83,9 +83,11 @@ public final class RoyaumeCommands {
                         .then(literal("ecus").then(argument("joueur", EntityArgument.player())
                                 .then(argument("montant", LongArgumentType.longArg()).executes(RoyaumeCommands::adminMoney))))
                         .then(literal("taille").then(argument("joueur", EntityArgument.player())
-                                .then(argument("niveau", IntegerArgumentType.integer(1, 10)).executes(c -> adminLevel(c, true)))))
+                                .then(argument("niveau", IntegerArgumentType.integer(1, 10)).executes(c -> adminLevel(c, 0)))))
                         .then(literal("membres").then(argument("joueur", EntityArgument.player())
-                                .then(argument("niveau", IntegerArgumentType.integer(1, 10)).executes(c -> adminLevel(c, false)))))
+                                .then(argument("niveau", IntegerArgumentType.integer(1, 10)).executes(c -> adminLevel(c, 1)))))
+                        .then(literal("batiments").then(argument("joueur", EntityArgument.player())
+                                .then(argument("niveau", IntegerArgumentType.integer(1, 10)).executes(c -> adminLevel(c, 2)))))
                         .then(literal("tp").then(argument("joueur", EntityArgument.player()).executes(c -> {
                             ServerPlayer t = EntityArgument.getPlayer(c, "joueur");
                             Island is = mgr().islandOf(t.getUUID());
@@ -118,6 +120,12 @@ public final class RoyaumeCommands {
                 return ok(c, () -> Msg.info("Bienvenue à la capitale !"));
             }));
         }
+        d.register(literal("sell").executes(RoyaumeCommands::sellHand));
+        d.register(literal("sellall").executes(RoyaumeCommands::sellAll));
+        d.register(literal("ecus").executes(RoyaumeCommands::balance)
+                .then(literal("give").requires(src -> src.hasPermission(2))
+                        .then(argument("joueur", EntityArgument.player())
+                                .then(argument("montant", LongArgumentType.longArg(1)).executes(RoyaumeCommands::giveMoney)))));
         d.register(literal("marche").executes(c -> { KingdomMenus.market(c.getSource().getPlayerOrException()); return 1; }));
     }
 
@@ -267,10 +275,32 @@ public final class RoyaumeCommands {
         ServerPlayer p = c.getSource().getPlayerOrException();
         Island is = mine(c, p);
         if (is == null) return 0;
-        long g = Market.sellStorages(is) + Market.sellInventory(p, is);
+        long g = Market.sellInventory(p, is);
         mgr().data().setDirty();
-        if (g == 0) return fail(c, "Rien à vendre pour l'instant.");
+        if (g == 0) return fail(c, "Rien à vendre dans ton inventaire.");
         return ok(c, () -> Msg.ok("Vente réussie : +" + Market.fmt(g) + " écus (trésor : " + Market.fmt(is.money) + ")."));
+    }
+
+    private static int sellHand(CommandContext<CommandSourceStack> c) throws CommandSyntaxException {
+        ServerPlayer p = c.getSource().getPlayerOrException();
+        Island is = mine(c, p);
+        if (is == null) return 0;
+        if (p.getMainHandItem().isEmpty()) return fail(c, "Tiens dans ta main l'objet à vendre.");
+        long g = Market.sellHand(p, is);
+        if (g == 0) return fail(c, "Cet objet ne se vend pas.");
+        mgr().data().setDirty();
+        return ok(c, () -> Msg.ok("Vendu : +" + Market.fmt(g) + " écus (trésor : " + Market.fmt(is.money) + ")."));
+    }
+
+    private static int giveMoney(CommandContext<CommandSourceStack> c) throws CommandSyntaxException {
+        ServerPlayer t = EntityArgument.getPlayer(c, "joueur");
+        Island is = mgr().islandOf(t.getUUID());
+        if (is == null) return fail(c, t.getGameProfile().getName() + " n'a pas de royaume : les écus vont dans le trésor d'un royaume.");
+        long amount = LongArgumentType.getLong(c, "montant");
+        is.money += amount;
+        mgr().data().setDirty();
+        t.sendSystemMessage(Msg.ok("Tu as reçu " + Market.fmt(amount) + " écus !"));
+        return ok(c, () -> Msg.ok(Market.fmt(amount) + " écus donnés à " + t.getGameProfile().getName() + " (trésor : " + Market.fmt(is.money) + ")."));
     }
 
     private static int balance(CommandContext<CommandSourceStack> c) throws CommandSyntaxException {
@@ -290,20 +320,20 @@ public final class RoyaumeCommands {
         return ok(c, () -> Msg.ok("Trésor du " + is.name + " : " + Market.fmt(is.money) + " écus."));
     }
 
-    private static int adminLevel(CommandContext<CommandSourceStack> c, boolean size) throws CommandSyntaxException {
+    /** what : 0 = terrain, 1 = membres, 2 = bâtiments. */
+    private static int adminLevel(CommandContext<CommandSourceStack> c, int what) throws CommandSyntaxException {
         ServerPlayer t = EntityArgument.getPlayer(c, "joueur");
         Island is = mgr().islandOf(t.getUUID());
         if (is == null) return fail(c, "Ce joueur n'a pas de royaume.");
         int lvl = IntegerArgumentType.getInteger(c, "niveau");
-        int max = size ? mgr().config().taillesParNiveau.length : mgr().config().membresParNiveau.length;
+        IslandConfig cfg = mgr().config();
+        int max = what == 0 ? cfg.taillesParNiveau.length : what == 1 ? cfg.membresParNiveau.length : cfg.machinesParNiveau.length;
         if (lvl > max) return fail(c, "Niveau maximum : " + max + ".");
-        if (size) {
-            int from = mgr().config().radiusFor(is.sizeLevel);
-            is.sizeLevel = lvl;
-            if (mgr().config().radiusFor(lvl) > from) mgr().growIsland(is, from);
-        }
-        else is.memberLevel = lvl;
+        if (what == 0) is.sizeLevel = lvl;
+        else if (what == 1) is.memberLevel = lvl;
+        else is.machineLevel = lvl;
         mgr().data().setDirty();
         return ok(c, () -> Msg.ok("Niveau mis à jour."));
     }
+
 }
