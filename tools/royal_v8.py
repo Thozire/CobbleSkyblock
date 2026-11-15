@@ -361,7 +361,32 @@ def bay(p, x0, y0, x1, y1, scene, lines, vw, vh, arch=0, sub=None):
         p.px(cx_, cy_, GOLD[5]); p.px(cx_ + 1, cy_ + 1, GOLD[1])
 
 # ---------------------------------------------------------------- château
-def build(p, demo=False, page="main"):
+def slot_recess(p, x, y, gold=False):
+    """Case creusée dans le bois : l'objet du jeu (16x16) s'affiche dedans, à (x, y)."""
+    p.rect(x - 1, y - 1, x + 16, y + 16, (20, 10, 14))
+    p.rect(x, y, x + 16, y + 16, WOOD[1]); p.rect(x, y, x + 15, y + 15, (44, 24, 26))
+    p.hline(x, x + 15, y, (16, 8, 12)); p.vline(x, y, y + 15, (16, 8, 12))
+    p.hline(x, x + 16, y + 16, WOOD[3]); p.vline(x + 16, y, y + 16, WOOD[3])
+    if gold:
+        p.rect(x - 2, y - 2, x + 17, y - 2, GOLD[4]); p.rect(x - 2, y + 17, x + 17, y + 17, GOLD[2])
+        p.vline(x - 2, y - 2, y + 17, GOLD[4]); p.vline(x + 17, y - 2, y + 17, GOLD[2])
+        p.px(x - 2, y - 2, GOLD[6])
+
+def nav_buttons(p, by=108):
+    """Retour (case 45) et fermer (case 53)."""
+    for (bx, pal, rows) in ((8, GOLD, ["........", "...#....", "..##....", ".#######", ".#######", "..##....", "...#....", "........"]),
+                            (152, RED, ["........", ".##..##.", ".###.##.", "..####..", "..####..", ".##.###.", ".##..##.", "........"])):
+        p.rect(bx - 1, by - 1, bx + 16, by + 16, K)
+        for yy in range(16):
+            for xx in range(16):
+                p.px(bx + xx, by + yy, pick(pal[2:6], 0.9 - yy / 20 - (0.2 if xx > 12 else 0), bx + xx, by + yy))
+        p.hline(bx, bx + 15, by, pal[6]); p.hline(bx, bx + 15, by + 15, pal[1]); p.vline(bx + 15, by, by + 15, pal[1])
+        for (oy, col) in ((1, pal[0]), (0, (255, 248, 226))):
+            for yy, r in enumerate(rows):
+                for xx, ch in enumerate(r):
+                    if ch == "#": p.rect(bx + xx * 2, by + yy * 2 + oy, bx + xx * 2 + 1, by + yy * 2 + 1 + oy, col)
+
+def build(p, demo=False, page="main", title="ROYAUME"):
     S = Pix(W, H, OX, OY)
 
     # toit central (derrière la bannière)
@@ -451,36 +476,25 @@ def build(p, demo=False, page="main"):
         bay(p, 5, 94, 85, 126, SCENES["court"], ["Membres"], 24, 26, arch=5)
         bay(p, 91, 94, 171, 126, SCENES["capital"], ["Capitale"], 24, 26, arch=5)
         bays, knobs = ((5, 16, 171, 54), (5, 58, 85, 90), (91, 58, 171, 90), (5, 94, 85, 126), (91, 94, 171, 126)), ((88, 56), (88, 92))
-    else:
+    elif page == "building":
         bay(p, 5, 16, 171, 52, SCENES["stock"], ["Récupérer", "le stock"], 92, 29)
         bay(p, 5, 56, 85, 86, SCENES["forge"], ["Améliorer"], 24, 24, arch=5)
         bay(p, 91, 56, 171, 86, SCENES["cart"], ["Ramasser"], 24, 24, arch=5)
         bay(p, 5, 89, 171, 126, None, [], 0, 0)
-        # cases du stock (ligne 4 du coffre) : les objets du jeu s'affichent dedans
-        for c in range(9):
-            x, y = 8 + 18 * c, 90
-            p.rect(x - 1, y - 1, x + 16, y + 16, (20, 10, 14))
-            p.rect(x, y, x + 16, y + 16, WOOD[1]); p.rect(x, y, x + 15, y + 15, (44, 24, 26))
-            p.hline(x, x + 15, y, (16, 8, 12)); p.vline(x, y, y + 15, (16, 8, 12))
-            p.hline(x, x + 16, y + 16, WOOD[3]); p.vline(x + 16, y, y + 16, WOOD[3])
+        for c in range(9): slot_recess(p, 8 + 18 * c, 90)          # stock (ligne 4 du coffre)
         fancy_text_c(p, 88, 113, "Stock du bâtiment", grad=CREAM_GRAD, extrude=1, shine=False)
-        # retour (case 45) et fermer (case 53)
-        for (bx, pal, rows) in ((8, GOLD, ["........", "...#....", "..##....", ".#######", ".#######", "..##....", "...#....", "........"]),
-                                (152, RED, ["........", ".##..##.", ".###.##.", "..####..", "..####..", ".##.###.", ".##..##.", "........"])):
-            by = 108
-            p.rect(bx - 1, by - 1, bx + 16, by + 16, K)
-            for yy in range(16):
-                for xx in range(16):
-                    p.px(bx + xx, by + yy, pick(pal[2:6], 0.9 - yy / 20 - (0.2 if xx > 12 else 0), bx + xx, by + yy))
-            p.hline(bx, bx + 15, by, pal[6] if len(pal) > 6 else pal[5]); p.hline(bx, bx + 15, by + 15, pal[1]); p.vline(bx + 15, by, by + 15, pal[1])
-            for yy, r in enumerate(rows):
-                for xx, ch in enumerate(r):
-                    if ch == "#":
-                        p.rect(bx + xx * 2, by + yy * 2 + 1, bx + xx * 2 + 1, by + yy * 2 + 2, pal[0])
-            for yy, r in enumerate(rows):
-                for xx, ch in enumerate(r):
-                    if ch == "#": p.rect(bx + xx * 2, by + yy * 2, bx + xx * 2 + 1, by + yy * 2 + 1, (255, 248, 226))
+        nav_buttons(p)
         bays, knobs = ((5, 16, 171, 52), (5, 56, 85, 86), (91, 56, 171, 86), (5, 89, 171, 126)), ((88, 54), (88, 87.5))
+    else:                                                          # liste des bâtiments + boutique
+        bay(p, 5, 16, 171, 71, None, [], 0, 0)
+        for r in range(3):
+            for c in range(9): slot_recess(p, 8 + 18 * c, 18 + 18 * r)
+        bay(p, 5, 75, 171, 126, None, [], 0, 0)
+        fancy_text_c(p, 88, 78, "Acheter un bâtiment", grad=BRIGHT_GRAD, extrude=1, out=(16, 6, 10), ext_cols=((60, 22, 18),), shine=False)
+        for c in (1, 3, 5, 7): slot_recess(p, 8 + 18 * c, 90, gold=True)
+        fancy_text_c(p, 88, 113, "Clique pour acheter", grad=CREAM_GRAD, extrude=1, shine=False)
+        nav_buttons(p)
+        bays, knobs = ((5, 16, 171, 71), (5, 75, 171, 126)), ((88, 73),)
     for (bx0, by0, bx1, by1) in bays:
         p.rect(bx0 - 1, by0 - 1, bx1 + 1, by0 - 1, K); p.rect(bx0 - 1, by1 + 1, bx1 + 1, by1 + 1, K)
         p.vline(bx0 - 1, by0 - 1, by1 + 1, K); p.vline(bx1 + 1, by0 - 1, by1 + 1, K)
@@ -523,12 +537,13 @@ def build(p, demo=False, page="main"):
         for k in range(d // 2 + 1):
             hdr.px(k, y, (0, 0, 0, 0)); hdr.px(hw_ - 1 - k, y, (0, 0, 0, 0))
     stamp(p, hdr, PX0 - 5, PY0 + 10, K)
-    fancy_text_c(p, PX0 + PW // 2, PY0 + 14, "Ton royaume" if page == "main" else "Ce bâtiment", grad=BRIGHT_GRAD, extrude=1, out=(30, 6, 12),
+    fancy_text_c(p, PX0 + PW // 2, PY0 + 14, {"main": "Ton royaume", "building": "Ce bâtiment"}.get(page, "Tes bâtiments"), grad=BRIGHT_GRAD, extrude=1, out=(30, 6, 12),
                  ext_cols=((70, 14, 24),), shine=False)
     # catégories
     ROW0, STEP = PY0 + 30, 20
     rows_ = ((("crown", "Seigneur"), ("coins", "Trésor"), ("hourglass", "Revenu"), ("trophy", "Rang"), ("people", "Membres")) if page == "main"
-             else (("trophy", "Niveau"), ("hourglass", "Production"), ("chest", "Stock"), ("coins", "Valeur"), ("arrow", "Amélioration")))
+             else (("trophy", "Niveau"), ("hourglass", "Production"), ("chest", "Stock"), ("coins", "Valeur"), ("arrow", "Amélioration")) if page == "building"
+             else (("trophy", "Posés"), ("hourglass", "Production"), ("chest", "Stock total"), ("coins", "Trésor"), ("arrow", "Agrandir")))
     for i, (ic, lab) in enumerate(rows_):
         y = ROW0 + i * STEP
         L = icon(ic)
@@ -699,7 +714,7 @@ def build(p, demo=False, page="main"):
             p.px(x, y, rnd.choice((RED[5], (250, 244, 252), GOLD[5]))); p.px(x, y + 1, LEAF[2])
 
     # ---- bannière-titre ----
-    title_banner(p, -28, 204, -23, 27, 9, "ROYAUME")
+    title_banner(p, -28, 204, -23, 27, 9, title)
 
     if demo:
         vals = ((("Thozire", (62, 38, 26)), ("12 480 écus", (156, 92, 16)), ("+356 / min", (34, 108, 38)),
@@ -709,15 +724,15 @@ def build(p, demo=False, page="main"):
         for i, (v, c) in enumerate(vals): p.text(-112 + 27, 36 + 30 + i * 20 + 9, v, c, False)
         p.text_c(241, 162, "Niveau 2" if page == "main" else "Scierie", (255, 236, 190), True)
 
-def render(page="main"):
+def render(page="main", title="ROYAUME"):
     """Fond définitif (sans textes dynamiques) : image 440x270."""
     p = Pix(W, H, OX, OY)
-    build(p, demo=False, page=page)
+    build(p, demo=False, page=page, title=title)
     return p.img
 
-def preview(path, page="main"):
+def preview(path, page="main", title="ROYAUME"):
     p = Pix(W, H, OX, OY)
-    build(p, demo=True, page=page)
+    build(p, demo=True, page=page, title=title)
     bg = Image.new("RGBA", (W + 40, H + 20), (0, 0, 0, 255))
     d = bg.load()
     for y in range(bg.height):

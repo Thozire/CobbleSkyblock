@@ -32,18 +32,43 @@ def write_json(path, obj):
     with open(path, "w", encoding="utf-8") as f:
         json.dump(obj, f, ensure_ascii=False, indent=1)
 
-PAGES = ["main", "building"]          # une page = 4 tuiles ; glyphes E100+4i … E103+4i
+# Pages dessinées : nom -> (mise en page, titre de la bannière). Une page = 4 tuiles ; les tuiles identiques
+# d'une page à l'autre (le bas du château) ne sont stockées qu'une fois.
+PAGES = {"main": ("main", "ROYAUME"), "list": ("list", "BATIMENTS"), "scierie": ("building", "SCIERIE"),
+         "ferme": ("building", "FERME"), "mine": ("building", "MINE"), "forge": ("building", "FORGE")}
+PAGE_CHARS = {}                       # nom -> les 4 caractères de ses tuiles
 
 def build_tiles():
-    out = []
-    for i, page in enumerate(PAGES): out += page_tiles(page, [chr(0xE100 + 4 * i + k) for k in range(4)])
+    import hashlib, shutil
+    d = f"{NS}/textures/font"
+    if os.path.isdir(d): shutil.rmtree(d)
+    os.makedirs(d)
+    out, seen = [], {}
+    for page, (layout, title) in PAGES.items():
+        img = royal_v8.render(layout, title)
+        assert img.size == (W, H)
+        chars = ""
+        for r in range(2):
+            for c in range(2):
+                t = img.crop((c * TILE_W, r * TILE_H, (c + 1) * TILE_W, (r + 1) * TILE_H)).copy()
+                # Minecraft calcule l'avance d'un glyphe d'après sa dernière colonne non transparente :
+                # un pixel quasi invisible dans le coin droit garantit une largeur de 220.
+                if t.getpixel((TILE_W - 1, 0))[3] == 0: t.putpixel((TILE_W - 1, 0), (0, 0, 0, 1))
+                h = hashlib.sha1(t.tobytes()).hexdigest() + str(r)
+                if h not in seen:
+                    ch = chr(0xE100 + len(seen)); seen[h] = ch
+                    name = f"{page}_{r}{c}.png"
+                    t.save(f"{d}/{name}")
+                    top = -OY + r * TILE_H             # haut de la tuile dans le repère du coffre
+                    out.append({"type": "bitmap", "file": f"cobbleislands:font/{name}", "height": TILE_H,
+                                "ascent": 13 - top, "chars": [ch]})
+                chars += seen[h]
+        PAGE_CHARS[page] = chars
     return out
 
-def page_tiles(page, TILE_CHARS):
+def _unused_page_tiles(page, TILE_CHARS):
     img = royal_v8.render(page)
-    assert img.size == (W, H)
     out = []
-    os.makedirs(f"{NS}/textures/font", exist_ok=True)
     for r in range(2):
         for c in range(2):
             t = img.crop((c * TILE_W, r * TILE_H, (c + 1) * TILE_W, (r + 1) * TILE_H)).copy()
@@ -230,9 +255,19 @@ final class GuiFont {{
     private GuiFont() {{}}
 
     /** Glyphes des tuiles du fond du menu principal (haut-gauche, haut-droit, bas-gauche, bas-droit). */
-    static final String MAIN_TILES = "{java_escape(''.join(TILE_CHARS))}";
-    /** Idem pour la page d'un bâtiment. */
-    static final String BUILDING_TILES = "{java_escape(''.join(chr(0xE104 + k) for k in range(4)))}";
+    static final String MAIN_TILES = "{java_escape(PAGE_CHARS['main'])}";
+    /** Liste des bâtiments et boutique. */
+    static final String LIST_TILES = "{java_escape(PAGE_CHARS['list'])}";
+
+    /** Page d'un bâtiment, avec son nom en titre. */
+    static String buildingTiles(String id) {{
+        return switch (id) {{
+            case "ferme" -> "{java_escape(PAGE_CHARS['ferme'])}";
+            case "mine" -> "{java_escape(PAGE_CHARS['mine'])}";
+            case "forge" -> "{java_escape(PAGE_CHARS['forge'])}";
+            default -> "{java_escape(PAGE_CHARS['scierie'])}";
+        }};
+    }}
     static final int TILE_W = {TILE_W}, CANVAS_X = {-OX};
     /** Espacements : NEG[i] recule de 2^i pixels, POS[i] avance de 2^i pixels. */
     static final String NEG = "{java_escape(''.join(NEG))}";

@@ -164,30 +164,40 @@ public final class KingdomMenus {
         Island is = mgr().islandOf(p.getUUID());
         if (is == null) { start(p); return; }
         int max = mgr().maxMachines(is);
-        IslandMenu.open(p, Page.LIST, "Machines (" + is.buildings.size() + "/" + max + ")", m -> {
+        long stock = 0;
+        for (Building b : is.buildings) stock += b.stored();
+        int next = mgr().config().machinesCost(is.machineLevel + 1);
+        Component title = RoyalGui.listTitle(
+                is.buildings.size() + " / " + max,
+                "+" + Market.fmt(mgr().incomePerMinute(is)) + " / min",
+                Market.fmt(stock),
+                Market.fmt(is.money) + " écus",
+                next < 0 ? "Maximum" : Market.fmt(next) + " écus",
+                is.buildings.size() + " / " + max + " posés");
+        IslandMenu.open(p, title, m -> {
+            // bâtiments posés : les trois rangées de cases du haut ; un clic ouvre la page du bâtiment
             int k = 0;
             for (Building b : is.buildings) {
-                if (k >= 21) break;
+                if (k >= 27) break;
                 int cap = b.type.capacity(b.level);
-                m.set(LIST[k++], button(b.type.icon(), b.type.label + " (niv. " + b.level + ")", CREAM,
-                        "§7Production : §a" + b.type.rate(b.level) + "/min",
-                        "§7Stock : §f" + b.stored() + "/" + cap + (b.full() ? " §c(plein !)" : ""),
-                        "§8Position : " + b.pos.getX() + " " + b.pos.getY() + " " + b.pos.getZ(), "", "§eClic : gérer"),
+                m.set(k++, button(b.type.icon(), b.type.label + " (niv. " + b.level + ")", CREAM,
+                        "§7Production : §a" + b.type.rate(b.level) + " /min",
+                        "§7Stock : §f" + Market.fmt(b.stored()) + " / " + Market.fmt(cap) + (b.full() ? " §c(plein !)" : ""),
+                        "§8Position : " + b.pos.getX() + " " + b.pos.getY() + " " + b.pos.getZ(), "", "§eClic : ouvrir"),
                         pl -> building(pl, b.id));
             }
-            if (is.buildings.isEmpty())
-                m.set(LIST[3], button(I_EMPTY, "Aucune machine posée", GRAY, "§7Achète une machine ci-dessous,", "§7puis clic droit sur ton île."));
+            // boutique : quatre cases dorées
             int i = 0;
             for (BuildingType t : BuildingType.values()) {
-                m.set(LIST[22 + i * 1 + (i >= 2 ? 1 : 0)], glow(button(t.icon(), "Acheter : " + t.label, GREEN,
-                        "§7Prix : " + ecus(t.price), "§7Production : §a" + t.rate(1) + "/min §8(niv. 1)",
-                        "§7Produit : §f" + outputs(t), "", "§7Machines posées : §f" + is.buildings.size() + "/" + max,
-                        is.money >= t.price ? "§aClic : acheter (l'objet va dans ton inventaire)" : "§cPas assez d'écus")),
+                m.set(37 + 2 * i++, button(t.icon(), "Acheter : " + t.label, GREEN,
+                        "§7Prix : " + ecus(t.price), "§7Production : §a" + t.rate(1) + " /min §8(niv. 1)",
+                        "§7Stock max : §f" + Market.fmt(t.capacity(1)),
+                        "§7Produit : §f" + outputs(t), "", "§7Bâtiments posés : §f" + is.buildings.size() + " / " + max,
+                        is.money >= t.price ? "§aClic : acheter (il va dans ton inventaire)" : "§cIl te manque " + Market.fmt(t.price - is.money) + " écus"),
                         pl -> { cmd(pl, "royaume acheter " + t.id); buildings(pl); });
-                i++;
             }
-            backBtn(m, KingdomMenus::main);
-            closeBtn(m, 53);
+            m.set(45, button(I_BLANK, "Retour", CREAM, "§7Revenir au menu du royaume"), KingdomMenus::main);
+            m.set(53, button(I_BLANK, "Fermer", RED), ServerPlayer::closeContainer);
         });
     }
 
@@ -210,13 +220,13 @@ public final class KingdomMenus {
         long value = 0;
         for (Map.Entry<String, Long> e : b.storage.entrySet()) value += e.getValue() * Market.price(e.getKey());
         int cost = t.nextCost(b.level);
-        Component title = RoyalGui.buildingTitle(
+        Component title = RoyalGui.buildingTitle(t.id,
                 b.level + " / " + BuildingType.MAX_LEVEL,
                 "+" + t.rate(b.level) + " / min",
                 Market.fmt(b.stored()) + " / " + Market.fmt(cap),
                 Market.fmt(value) + " écus",
                 cost < 0 ? "Maximum" : Market.fmt(cost) + " écus",
-                t.label);
+                "Niveau " + b.level);
         IslandMenu.open(p, title, m -> {
             zone(m, 0, 1, 0, 8, button(I_BLANK, "Récupérer le stock", GREEN, "§7Met tout le stock du bâtiment", "§7dans ton inventaire.", "",
                     "§7Stock : §f" + Market.fmt(b.stored()) + " / " + Market.fmt(cap) + (b.full() ? " §c(plein !)" : ""),
