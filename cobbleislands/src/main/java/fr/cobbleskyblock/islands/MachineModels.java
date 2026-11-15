@@ -5,7 +5,7 @@ final class MachineModels {
     private MachineModels() {}
 
     /** Version des modèles : un bâtiment posé avec une autre version est reconstruit. */
-    static final int VERSION = 5;
+    static final int VERSION = 6;
 
     /**
      * Pièce d'un bâtiment : modèle, pivot (repère de dessin, 1/16 de bloc), pleine lumière, vacillement
@@ -34,8 +34,8 @@ final class MachineModels {
 
     private static final Part[] MOULIN = {
             new Part(7330, 24f, 30f, 14.4f, false, 0f, new float[]{8f, 0f, 0f, 0f, 2f, 90f, 1f, 1f, 1f, 8f, 0f, 0f, 0f, 2f, 180f, 1f, 1f, 1f, 8f, 0f, 0f, 0f, 2f, 270f, 1f, 1f, 1f, 8f, 0f, 0f, 0f, 2f, 360f, 1f, 1f, 1f}),   // ailes
-            new Part(7331, 37f, 1f, 6.4f, false, 0f, new float[]{4f, 0f, 0f, 0f, 0f, 5f, 1f, 1f, 1f, 4f, 0f, 0f, 0f, 0f, -2f, 1f, 1f, 1f, 4f, 0f, 0f, 0f, 0f, 4f, 1f, 1f, 1f, 4f, 0f, 0f, 0f, 0f, -5f, 1f, 1f, 1f}),   // ble
-            new Part(7332, 11.5f, 1f, 10.2f, false, 0f, new float[]{8f, 0f, 0f, 0f, 2f, 4f, 1f, 1f, 1f, 8f, 0f, 0f, 0f, 2f, -4f, 1f, 1f, 1f}),   // epouvantail
+            new Part(7331, 37f, 1f, 5.6f, false, 0f, new float[]{4f, 0f, 0f, 0f, 0f, 5f, 1f, 1f, 1f, 4f, 0f, 0f, 0f, 0f, -2f, 1f, 1f, 1f, 4f, 0f, 0f, 0f, 0f, 4f, 1f, 1f, 1f, 4f, 0f, 0f, 0f, 0f, -5f, 1f, 1f, 1f}),   // ble
+            new Part(7332, 13f, 1f, 7.2f, false, 0f, new float[]{8f, 0f, 0f, 0f, 2f, 4f, 1f, 1f, 1f, 8f, 0f, 0f, 0f, 2f, -4f, 1f, 1f, 1f}),   // epouvantail
             new Part(7333, 24f, 48.2f, 30f, false, 0f, new float[]{6f, 0f, 0f, 0f, 1f, 25f, 1f, 1f, 1f, 3f, 0f, 0f, 0f, 1f, 14f, 1f, 1f, 1f, 5f, 0f, 0f, 0f, 1f, 42f, 1f, 1f, 1f, 6f, 0f, 0f, 0f, 1f, -8f, 1f, 1f, 1f, 4f, 0f, 0f, 0f, 1f, 6f, 1f, 1f, 1f, 8f, 0f, 0f, 0f, 1f, 0f, 1f, 1f, 1f}),   // girouette
             new Part(7334, 24f, 24f, 24f, true, 0f, new float[]{}),   // lumiere
     };
@@ -48,16 +48,13 @@ final class MachineModels {
     private static final Part[] MINE = {
             new Part(7340, 24f, 6f, 9f, false, 0f, new float[]{6f, 0f, 0f, 0f, 1f, 0f, 1f, 1f, 1f, 10f, 0f, 0f, 27f, 1f, 0f, 1f, 1f, 1f, 6f, 0f, 0f, 27f, 1f, 0f, 1f, 1f, 1f, 10f, 0f, 0f, 0f, 1f, 0f, 1f, 1f, 1f}),   // wagonnet
             new Part(7341, 41f, 18f, 7.5f, false, 0f, new float[]{4f, 0f, 0f, 0f, 0f, 120f, 1f, 1f, 1f, 4f, 0f, 0f, 0f, 0f, 240f, 1f, 1f, 1f, 4f, 0f, 0f, 0f, 0f, 360f, 1f, 1f, 1f, 4f, 0f, 0f, 0f, 0f, 360f, 1f, 1f, 1f, 4f, 0f, 0f, 0f, 0f, 240f, 1f, 1f, 1f, 4f, 0f, 0f, 0f, 0f, 120f, 1f, 1f, 1f, 4f, 0f, 0f, 0f, 0f, 0f, 1f, 1f, 1f, 4f, 0f, 0f, 0f, 0f, 0f, 1f, 1f, 1f}),   // treuil
-            new Part(7342, 41f, 17.4f, 7.5f, false, 0f, new float[]{12f, 0f, 0f, 0f, 1f, 0f, 1f, 0.36f, 1f, 4f, 0f, 0f, 0f, 1f, 0f, 1f, 0.36f, 1f, 12f, 0f, 0f, 0f, 1f, 0f, 1f, 1.3f, 1f, 4f, 0f, 0f, 0f, 1f, 0f, 1f, 1.3f, 1f}),   // corde
-            new Part(7343, 41f, 3f, 7.5f, false, 0f, new float[]{12f, 0f, 8.836f, 0f, 1f, 0f, 1f, 1f, 1f, 4f, 0f, 8.836f, 0f, 1f, 0f, 1f, 1f, 1f, 12f, 0f, 0f, 0f, 1f, 0f, 1f, 1f, 1f, 4f, 0f, 0f, 0f, 1f, 0f, 1f, 1f, 1f}),   // seau
+            new Part(7342, 41f, 17.4f, 7.5f, false, 0f, new float[]{12f, 0f, 0f, 0f, 1f, 0f, 1f, 0.3f, 1f, 4f, 0f, 0f, 0f, 1f, 0f, 1f, 0.3f, 1f, 12f, 0f, 0f, 0f, 1f, 0f, 1f, 0.9f, 1f, 4f, 0f, 0f, 0f, 1f, 0f, 1f, 0.9f, 1f}),   // corde
+            new Part(7343, 41f, 3f, 7.5f, false, 0f, new float[]{12f, 0f, 6f, 0f, 1f, 0f, 1f, 1f, 1f, 4f, 0f, 6f, 0f, 1f, 0f, 1f, 1f, 1f, 12f, 0f, 0f, 0f, 1f, 0f, 1f, 1f, 1f, 4f, 0f, 0f, 0f, 1f, 0f, 1f, 1f, 1f}),   // seau
             new Part(7344, 23f, 45.25f, 37f, false, 0f, new float[]{4f, 0f, 0f, 0f, 1f, 10f, 1f, 1f, 1f, 3f, 0f, 0f, 0f, 1f, -4f, 1f, 1f, 1f, 4f, 0f, 0f, 0f, 1f, 7f, 1f, 1f, 1f, 5f, 0f, 0f, 0f, 1f, -10f, 1f, 1f, 1f}),   // fanion
-            new Part(7345, 24f, 24f, 24f, true, 0f, new float[]{}),   // lumiere
     };
 
     private static final Emitter[] MINE_FX = {
             new Emitter("stone", 24f, 3f, 19f, 2, 0.3f, 0.1f, 0.2f, 0.02f, 6, 0),
-            new Emitter("small_flame", 16f, 16.5f, 13.3f, 1, 0.03f, 0.05f, 0.03f, 0f, 5, 0),
-            new Emitter("small_flame", 32f, 16.5f, 13.3f, 1, 0.03f, 0.05f, 0.03f, 0f, 5, 2),
     };
 
     private static final Part[] FORGE = {
