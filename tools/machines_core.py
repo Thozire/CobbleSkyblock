@@ -17,7 +17,7 @@ from PIL import Image, ImageDraw
 MC = os.environ.get("MC_ASSETS", "/home/claude/mcassets/assets/minecraft") + "/textures/"
 PACK = os.environ.get("ROYAUMES_PACK", "/home/claude/rp/royaumes")
 NS = PACK + "/assets/cobbleislands"
-VERSION = 6            # version des modèles : les machines déjà posées sont reconstruites si elle change
+VERSION = 7            # version des modèles : les machines déjà posées sont reconstruites si elle change
 TICKS_PER_STEP = 5     # le serveur anime toutes les 5 ticks
 
 # ================================================================ textures peintes (16x16)
@@ -156,6 +156,15 @@ def tex_water_still():
     for (x, y) in ((1, 1), (2, 1), (1, 2), (4, 3)): d[x, y] = (150, 200, 246, 255)
     return im
 
+def tex_whetstone():
+    """Grès de meule à aiguiser : grain clair, moucheté."""
+    im = _img(); d = im.load(); rnd = random.Random(29)
+    for y in range(16):
+        for x in range(16):
+            v = 1.0 + rnd.uniform(-0.06, 0.06) - (0.1 if rnd.random() < 0.12 else 0)
+            d[x, y] = _mul((196, 186, 166), v) + (255,)
+    return im
+
 def tex_glow():
     """Lumière chaude (vitre de lanterne, fenêtre éclairée) qui palpite doucement."""
     frames = 4
@@ -229,7 +238,7 @@ def tex_plaster():
 CUSTOM = {
     "sack": tex_sack, "sawdust": tex_sawdust, "leather": tex_leather, "hole": tex_hole, "rope": tex_rope,
     "iron_dark": tex_iron_dark, "steel": tex_steel, "blade": tex_blade, "thatch": tex_thatch, "shingle": tex_shingle,
-    "sail": tex_sail, "water": tex_water, "water_still": tex_water_still, "glow": tex_glow, "window": tex_window, "hot": tex_hot, "plaster": tex_plaster,
+    "sail": tex_sail, "whetstone": tex_whetstone, "water": tex_water, "water_still": tex_water_still, "glow": tex_glow, "window": tex_window, "hot": tex_hot, "plaster": tex_plaster,
     "banner_green": _banner((58, 128, 62), (232, 196, 84)), "banner_red": _banner((170, 44, 40), (232, 196, 84)),
     "banner_blue": _banner((50, 84, 168), (232, 196, 84)), "banner_gold": _banner((214, 160, 40), (120, 40, 36)),
     "ore_gold": tex_ore(31, (250, 214, 74)), "ore_iron": tex_ore(32, (216, 175, 147)),

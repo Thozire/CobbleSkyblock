@@ -7,57 +7,48 @@ STONE, MOSSY, COBBLE, MCOBBLE = "mc:stone_bricks", "mc:mossy_stone_bricks", "mc:
 
 # ====================================================================== SCIERIE
 def scierie():
-    """Scierie à eau : hangar à pans de bois, roue à aubes, scie à cadre qui monte et descend, grume qui avance."""
+    """Scierie à eau : halle ouverte sur quatre poteaux, roue à aubes, scie à cadre qui monte et descend, grume qui avance."""
     b, glow = Model(), Model()
-    # --- dallage et canal
-    b.box((1, 0, 3), (35, 2, 47), {"*": STONE, "up": "mc:stone_bricks"})
-    b.box((11, 0, 0.5), (25, 1, 3), SP)                                   # marche d'entrée
+    # --- aire de sciage dallée, canal du moulin
+    b.box((1, 0, 2), (35, 1.6, 47), {"*": STONE, "up": "mc:stone_bricks"})
+    b.box((9, 1.6, 2.5), (27, 2, 46.5), SP)                                # plancher sous la voie du chariot
+    b.box((11, 0, 0), (25, 1, 2), SP)                                     # marche d'entrée
     b.box((36, 0, 0), (48, 1, 48), COBBLE)
     b.box((36, 1, 0), (37.5, 5, 48), MCOBBLE)
     b.box((46.5, 1, 0), (48, 5, 48), MCOBBLE)
     b.box((37.5, 1, 0), (46.5, 5, 1.5), MCOBBLE); b.box((37.5, 1, 46.5), (46.5, 5, 48), MCOBBLE)     # rebords des deux bouts
     b.box((37.5, 1, 1.5), (46.5, 4, 46.5), "water")
-    # --- ossature
-    for (x, z) in ((2, 4), (31, 4), (2, 43), (31, 43)):
-        b.box((x, 2, z), (x + 3, 24, z + 3), log("dark_oak"))
-    b.box((2, 2, 23), (5, 24, 26), log("dark_oak"))                      # poteau intermédiaire côté ouvert
-    b.box((31, 2, 22.5), (34, 15.2, 25.5), log("dark_oak"))             # côté roue : poteau en deux parties,
-    b.box((31, 20.8, 22.5), (34, 24, 25.5), log("dark_oak"))            # l'arbre de la roue tourne dans le palier
-    b.box((31, 15.2, 22.5), (34, 16.5, 25.5), log("dark_oak"), tile=False)    # le poteau est percé juste à la taille
-    b.box((31, 19.5, 22.5), (34, 20.8, 25.5), log("dark_oak"), tile=False)    # de l'arbre (huit pans, rayon 1,41)
+    # --- halle ouverte : quatre grands poteaux, rien d'autre que la scie dessous
+    PX, PZ = (3, 30.5), (13, 32)
+    for x in PX:
+        for z in PZ: b.box((x, 1.6, z), (x + 3, 30, z + 3), log("dark_oak"))
+    for z in PZ: beam(b, (1.5, 30, z), (35, 32.6, z + 3))                  # entraits
+    for x in PX: beam(b, (x, 30, 11), (x + 3, 32.6, 37))                   # sablières
+    for z in PZ:
+        brace(b, 5, 22, z + 1.5, 9, 1); brace(b, 31.5, 22, z + 1.5, 9, -1)
+    for x in PX:
+        brace(b, x + 1.5, 22, 15, 9, 1, axis="x"); brace(b, x + 1.5, 22, 33, 9, -1, axis="x")
+    # palier de l'arbre de roue : un poteau court, percé à la taille de l'arbre (huit pans, rayon 1,41)
+    b.box((31, 1.6, 22.5), (34, 15.2, 25.5), log("dark_oak"))
+    b.box((31, 15.2, 22.5), (34, 16.5, 25.5), log("dark_oak"), tile=False)
+    b.box((31, 19.5, 22.5), (34, 20.8, 25.5), log("dark_oak"), tile=False)
     for (za, zb) in ((22.5, 22.55), (25.45, 25.5)): b.box((31, 16.5, za), (34, 19.5, zb), log("dark_oak"), tile=False)
-    for z in (4, 43):
-        beam(b, (1, 24, z), (35, 26.5, z + 3))                           # entraits
-    for x in (2, 31):
-        beam(b, (x, 24, 1.5), (x + 3, 26.5, 47))                         # sablières
-    beam(b, (16.5, 24, 23), (19.5, 26.5, 26), "dark_oak")
-    # jambes de force des poteaux de façade
-    b.box((5, 16, 4.6), (6.4, 28, 6.4), DO, rot=("z", -45, (5, 18, 5.5)))
-    b.box((29.6, 16, 4.6), (31, 28, 6.4), DO, rot=("z", 45, (31, 18, 5.5)))
-    # pignon de façade ouvert : poinçon et contrefiches
-    b.box((17, 26.5, 4.5), (19, 40, 6.5), DO)
-    b.box((9.3, 25, 4.8), (10.7, 38, 6.2), DO, rot=("z", -45, (10, 27, 5.5)))
-    b.box((25.3, 25, 4.8), (26.7, 38, 6.2), DO, rot=("z", 45, (26, 27, 5.5)))
-    # --- murs : fond plein, côté roue à mi-hauteur, côté opposé ajouré
-    b.box((5, 2, 44), (31, 24, 45.2), SP)
-    b.box((4.5, 12, 43.5), (31.5, 13.6, 45.6), DO)
-    gable_fill(b, 2, 34, 44, 45.2, 26.5, 40.5, SP)
-    b.box((32, 2, 7), (33.2, 13, 22.5), SP); b.box((32, 2, 25.5), (33.2, 13, 43), SP)
-    b.box((31.6, 13, 7), (33.6, 14.2, 43), DO)
-    b.box((2.8, 9, 7), (4.2, 10.4, 23), DO); b.box((2.8, 9, 26), (4.2, 10.4, 43), DO)      # lisse basse côté ouvert
-    # --- toit en bardeaux
-    gable_roof(b, 0, 36, 1, 47.4, 24.6, 40.6, "shingle", ridge="z", cap=DO)
+    b.box((30.6, 20.8, 22.1), (34.4, 22, 25.9), DO, tile=False)
+    # --- toit en bardeaux, haut perché : on voit tout ce qui se passe dessous
+    gable_fill(b, 11.5, 36.5, 3.4, 4.6, 32.6, 43.6, SP, ridge="x")
+    gable_fill(b, 11.5, 36.5, 31.9, 33.1, 32.6, 43.6, SP, ridge="x")
+    gable_roof(b, 0.6, 36, 9.6, 38.4, 30.8, 42.8, "shingle", ridge="x", cap=DO)
     # --- banc de sciage : rails et tréteaux
     for x in (13, 21.5):
-        b.box((x, 7, 5), (x + 1.5, 8.5, 43), DO)
-    for z in (7, 16, 32, 40.5):
+        b.box((x, 7, 4), (x + 1.5, 8.5, 45), DO)
+    for z in (6, 16, 32, 42):
         for x in (13, 21.5): b.box((x, 2, z), (x + 1.5, 7, z + 1.5), SP)
         b.box((12.5, 4.5, z + 0.2), (23.5, 5.7, z + 1.3), SP)
     for x in (10.5, 23.5):                                               # guides du cadre de scie : le montant
         b.box((x - 0.6, 2, 22.2), (x + 2.6, 3, 25.8), SP)                  # coulisse entre deux planches
         for (za, zb) in ((22.2, 22.95), (25.05, 25.8)): b.box((x - 0.6, 3, za), (x + 2.6, 12, zb), SP, tile=False)
-    # --- décor (allégé : Thozire a retiré la pile de planches, le billot et les grumes en attente)
     b.box((14.5, 2, 20.5), (21.5, 3, 27.5), "sawdust"); b.box((16, 3, 22), (20, 3.9, 26), "sawdust")
+    b.box((26.6, 1.6, 22.8), (29, 15.6, 25.2), DO)                       # pied du carter
 
     b.box((25.8, 15.6, 22.3), (29.6, 20.6, 25.7), DO)                    # carter de l'excentrique, fixe
     b.box((25.6, 20.6, 22.1), (29.8, 21, 25.9), SP, tile=False)
@@ -73,9 +64,9 @@ def scierie():
 
     # --- grume sur son chariot (avance lentement, revient vite)
     lg = Model()
-    lg.box((14, 9.5, 6), (22, 17.5, 34), log("oak", "z"), uvrot=log_uvrot("z"), tile=False)
-    for z in (9, 29): lg.box((12.3, 8.5, z), (23.7, 9.5, z + 2.2), DO)
-    for z in (9, 29):
+    lg.box((14, 9.5, 5), (22, 17.5, 37), log("oak", "z"), uvrot=log_uvrot("z"), tile=False)
+    for z in (9, 31): lg.box((12.3, 8.5, z), (23.7, 9.5, z + 2.2), DO)
+    for z in (9, 31):
         for x in (12.6, 22): lg.box((x, 9.5, z + 0.3), (x + 1.4, 12, z + 1.9), "iron_dark", tile=False)
     log_keys = [key(22, t=(0, 0, 8)), key(2, t=(0, 0, 8)), key(6), key(2)]
 
@@ -100,7 +91,7 @@ def scierie():
     parts = [Part("roue", w, ctr, spin("x", 4, -1)),
              Part("scie", saw, (18, 14, 24), saw_keys),
              Part("grume", lg, (18, 13.5, 20), log_keys),
-             banner("banner_green", 18, 42, 3.5, height=7)]
+             banner("banner_green", 18, 44.4, 24, height=7)]
     em = [Emitter("wood", (18, 18.5, 22.5), 3, (0.06, 0.04, 0.06), 0.03, period=2),
           Emitter("splash", (42, 5.5, 33), 2, (0.2, 0.05, 0.12), 0.0, period=2, at=1)]
     return Building("scierie", b, parts, em)
@@ -124,7 +115,6 @@ def moulin():
     octa(b, cx, cz, 11.0, 14.4, 16.6, DO)
     octa(b, cx, cz, 10.2, 16.6, 30.4, "plaster")
     octa(b, cx, cz, 10.9, 30.4, 32, DO)
-    octa(b, cx, cz, 10.7, 22.8, 24.2, DO)                                                    # ceinture de bois
     # --- toit de chaume conique
     octa(b, cx, cz, 12.6, 31.6, 33.6, "thatch")
     for i, rr in enumerate((11.2, 9.6, 8.0, 6.4, 4.8, 3.2, 1.8)):
@@ -359,8 +349,8 @@ def mine():
     wl.box((47.85, 20.2, 7.0), (48.9, 21.2, 8.0), SP, tile=False)                        # poignée
     wl_keys = [key(4, axis="x", angle=120), key(4, axis="x", angle=240), key(4, axis="x", angle=360), key(4, axis="x", angle=360),
                key(4, axis="x", angle=240), key(4, axis="x", angle=120), key(4, axis="x", angle=0), key(4, axis="x", angle=0)]
-    top, low, high = 17.4, 8.4, 14.4                                                     # la corde va du tambour à l'anse du seau
-    rope = Model().box((40.6, top - 10, 7.1), (41.4, top, 7.9), "rope", tile=False)
+    top, low, high = 17.4, 8.8, 14.8                                                     # la corde va du tambour à l'anse du seau
+    rope = Model().box((40.7, top - 10, 7.2), (41.3, top, 7.8), "rope", tile=False, skip=("down",))
     s_low, s_high = (top - low) / 10, (top - high) / 10
     rope_keys = [key(12, s=(1, s_high, 1)), key(4, s=(1, s_high, 1)), key(12, s=(1, s_low, 1)), key(4, s=(1, s_low, 1))]
     bk = Model()
@@ -435,10 +425,16 @@ def forge():
     for x in (10, 19.5):
         for z in (35, 39.5): b.box((x, 2, z), (x + 1.5, 9, z + 1.5), SP)
     b.box((21.5, 9.6, 37), (25, 11.4, 39), "iron_dark", tile=False)
-    # --- bâti de la meule
-    for z in (4.8, 9.6):
-        b.box((3.4, 2, z), (4.8, 10.6, z + 1.4), SP); b.box((11.2, 2, z), (12.6, 10.6, z + 1.4), SP)
-    b.box((4.8, 2, 6.2), (11.2, 3.4, 9.6), {"*": SP, "up": "water_still"})
+    # --- poste d'affûtage : auge pleine d'eau, deux fourches qui portent l'axe, repose-lame
+    b.box((4.4, 2, 5.4), (13.6, 5, 10.6), SP)
+    b.box((5.2, 5.02, 6.2), (12.8, 5.02, 9.8), {"up": "water_still"}, tile=False, uv={"up": [0, 0, 7.6, 3.6]})
+    for z in (3.8, 10.8):
+        b.box((8.1, 2, z), (9.9, 8.6, z + 1.4), DO, tile=False)
+        b.box((7.5, 8.6, z), (8.5, 10.6, z + 1.4), DO, tile=False); b.box((9.5, 8.6, z), (10.5, 10.6, z + 1.4), DO, tile=False)
+    b.box((14.6, 2, 7.2), (16, 13.8, 8.8), DO, tile=False)                               # repose-lame
+    b.box((6.2, 13.8, 7.6), (16.4, 14.4, 8.4), "steel", tile=False)                      # épée en cours d'affûtage
+    b.box((16.4, 13.1, 7.0), (17.2, 15.1, 9.0), "mc:gold_block", tile=False, uvo=(4, 4))
+    b.box((17.2, 13.7, 7.6), (20, 14.5, 8.4), DO, tile=False); b.box((20, 13.5, 7.4), (20.8, 14.7, 8.6), "mc:gold_block", tile=False, uvo=(8, 8))
     # --- baquet de trempe
     bs = {"*": "mc:barrel_side", "up": "mc:barrel_top", "down": "mc:barrel_bottom"}
     b.box((33, 2, 7), (41, 11, 15), bs, tile=False, uvo=(4, 0))
@@ -448,22 +444,28 @@ def forge():
     for z in (23.4, 35.4): b.box((5.4, 2, z), (6.6, 8, z + 1.2), DO); b.box((8.4, 2, z), (9.6, 8, z + 1.2), DO)
     b.box((5.6, 9.2, 25), (9, 11.6, 28), "steel", tile=False); b.box((6.4, 11.6, 25.8), (8.2, 12.4, 27.2), "steel", tile=False)      # heaume
     b.box((6, 9.2, 30.5), (9.4, 10, 35.5), "mc:iron_block", tile=False, uvo=(2, 2))
-    b.box((7, 15, 43.2), (23, 16.2, 44), DO)
-    b.box((8.6, 9.5, 43.3), (9.4, 15, 43.9), SP, tile=False); b.box((7.6, 8.4, 43.1), (10.4, 10.4, 44), "iron_dark", tile=False)     # marteau
-    b.box((12, 7.5, 43.4), (12.8, 15, 43.8), "steel", tile=False); b.box((10.8, 13.4, 43.3), (14, 14.2, 44), "mc:gold_block", tile=False, uvo=(4, 6))  # épée
-    b.box((17, 9, 43.3), (17.7, 15, 43.9), "iron_dark", tile=False); b.box((18.4, 9, 43.3), (19.1, 15, 43.9), "iron_dark", tile=False)  # pinces
-    b.box((21, 10, 43.3), (21.8, 15, 43.9), SP, tile=False); b.box((20.4, 8.6, 43.2), (22.4, 10, 44), "steel", tile=False)
+    # --- mur du fond : râtelier d'outils sous la sablière
+    wz = 44.4                                                                            # face du torchis
+    b.box((6, 22, wz - 1.2), (22.6, 23.2, wz), DO, tile=False)
+    for x in (7.2, 11.4, 16.6, 20.3): b.box((x, 21.4, wz - 1.6), (x + 0.8, 22, wz - 1.2), "iron_dark", tile=False)
+    b.box((7.2, 15, wz - 0.9), (8, 22, wz - 0.3), SP, tile=False)                        # marteau
+    b.box((5.9, 14.6, wz - 1.2), (9.3, 16.8, wz - 0.1), "iron_dark", tile=False)
+    b.box((10.9, 16.6, wz - 0.8), (11.5, 22, wz - 0.3), "iron_dark", tile=False); b.box((12.1, 16.6, wz - 0.8), (12.7, 22, wz - 0.3), "iron_dark", tile=False)   # pinces
+    b.box((10.7, 17.8, wz - 1.0), (12.9, 18.6, wz - 0.2), "steel", tile=False)
+    b.box((11.2, 14.6, wz - 0.8), (12.4, 16.6, wz - 0.3), "iron_dark", tile=False)
+    b.box((16.5, 13.4, wz - 0.7), (17.5, 19.6, wz - 0.3), "steel", tile=False)                                                                # épée
+    b.box((15.6, 19.6, wz - 0.9), (18.4, 20.4, wz - 0.1), "mc:gold_block", tile=False, uvo=(4, 6)); b.box((16.6, 20.4, wz - 0.7), (17.4, 22, wz - 0.3), DO, tile=False)
+    disc(b, (20.7, 17.4, wz - 0.6), 3.0, wz - 1.1, wz - 0.1, SP, axis="z")                                                                     # rondache
+    disc(b, (20.7, 17.4, wz - 0.9), 1.0, wz - 1.7, wz - 1.0, "iron_dark", axis="z")
+    for (dx, dy) in ((-2.1, 0), (2.1, 0), (0, -2.1), (0, 2.1)):
+        b.box((20.7 + dx - 0.3, 17.4 + dy - 0.3, wz - 1.35), (20.7 + dx + 0.3, 17.4 + dy + 0.3, wz - 1.1), "mc:gold_block", tile=False, uvo=(6, 6))
+    b.box((6.2, 9.2, 31), (9.2, 9.8, 31.6), "iron_dark", tile=False); b.box((6.2, 9.2, 32.6), (9.2, 9.8, 33.2), "iron_dark", tile=False)      # pinces sur l'établi
     b.box((13, 2, 24), (19, 3.5, 29), "mc:iron_block", tile=False, uvo=(1, 1)); b.box((14, 3.5, 24.6), (18, 5, 28.4), "mc:iron_block", tile=False, uvo=(5, 5))
     b.box((14.6, 5, 25.4), (17.4, 6.3, 27.6), "mc:gold_block", tile=False, uvo=(3, 3))
-    b.box((36, 2, 22), (42, 3.6, 27), "mc:copper_block", tile=False, uvo=(2, 2)); b.box((37, 3.6, 22.8), (41, 5, 26.2), "mc:copper_block", tile=False, uvo=(6, 5))
-    b.box((16.5, 2, 30.5), (23, 5.4, 36), "mc:coal_block", tile=False); b.box((14, 2, 31.6), (16.5, 3.8, 35), "mc:coal_block", tile=False, uvo=(5, 4))
-    b.box((18, 5.4, 31.6), (21.6, 6.8, 34.6), "mc:coal_block", tile=False, uvo=(8, 2))
-    # --- écu sur le poteau, lanterne
-    b.box((1.6, 13.4, 3.2), (5.4, 19.4, 4), "banner_red", tile=False, uvo=(6, 4)); b.box((2.5, 12, 3.2), (4.5, 13.4, 4), "banner_red", tile=False, uvo=(7, 12))
-    b.box((1.2, 19.4, 3), (5.8, 20.2, 4.1), "mc:gold_block", tile=False, uvo=(2, 2))
-    b.box((43.7, 21.8, 4.2), (45.3, 24.2, 4.9), "iron_dark", tile=False); b.box((44.1, 21.6, 2.2), (44.9, 22.4, 4.4), "iron_dark", tile=False)
-    lantern(b, glow, 44.5, 21.6, 2.8, hang=0.6)
-
+    # --- bac à charbon au pied de l'âtre
+    b.box((35, 2, 21), (43, 6.4, 28), SP)
+    for (x, z) in ((34.7, 20.7), (42.1, 20.7), (34.7, 27.1), (42.1, 27.1)): b.box((x, 2, z), (x + 1.2, 7, z + 1.2), DO, tile=False)
+    b.box((35.8, 6.4, 21.8), (42.2, 7.6, 27.2), "mc:coal_block", tile=False); b.box((37, 7.6, 23), (40.6, 8.6, 26), "mc:coal_block", tile=False, uvo=(6, 4))
     # --- flammes de l'âtre (texture animée + vacillement)
     fire = Model(); ff = "mc:campfire_fire"
     for z in (33.5, 37.5, 41):
@@ -489,11 +491,13 @@ def forge():
     for x in (11, 15, 19): bl.box((x, 9.6, 34.7), (x + 0.8, 15.4, 41.3), "iron_dark", tile=False)
     bl_keys = [key(3, s=(1, 0.5, 1)), key(5)]
 
-    # --- meule à aiguiser
-    gr = Model(); gc = (8.0, 9.6, 7.9)
-    disc(gr, gc, 4.6, 6.9, 8.9, "mc:polished_andesite", axis="z")
-    gr.box((7.2, 8.8, 4.6), (8.8, 10.4, 11.2), "iron_dark", tile=False)
-    gr.box((7.4, 9, 3.6), (8.6, 12.6, 4.6), "iron_dark", tile=False)
+    # --- meule à aiguiser : roue de grès sur son axe, manivelle en façade
+    gr = Model(); gc = (9.0, 9.6, 8.0)
+    disc(gr, gc, 4.4, 6.9, 9.1, "whetstone", axis="z")
+    disc(gr, gc, 1.1, 6.5, 9.5, "iron_dark", axis="z")
+    gr.box((8.5, 9.1, 3.2), (9.5, 10.1, 12.4), "iron_dark", tile=False)                  # axe
+    gr.box((8.5, 9.1, 2.6), (9.5, 12.6, 3.3), "iron_dark", tile=False)                   # manivelle
+    gr.box((8.4, 11.6, 1.2), (9.6, 12.8, 2.6), SP, tile=False)
 
     parts = [Part("marteau", hm, hp, hm_keys),
              Part("soufflet", bl, (15.5, 9, 38), bl_keys),
@@ -505,7 +509,7 @@ def forge():
           Emitter("spark", (23.6, 14.8, 17.5), 7, (0.12, 0.05, 0.12), 0.12, period=8, at=6),
           Emitter("lava", (23.6, 14.8, 17.5), 1, (0.05, 0.02, 0.05), 0.0, period=8, at=6),
           Emitter("flame", (35, 11, 31.5), 3, (0.3, 0.12, 0.1), 0.01, period=8, at=3),
-          Emitter("spark", (8, 14, 7.4), 1, (0.05, 0.03, 0.05), 0.05, period=3)]
+          Emitter("spark", (9, 14.6, 8), 2, (0.06, 0.03, 0.04), 0.06, period=2)]
     return Building("forge", b, parts, em)
 
 
