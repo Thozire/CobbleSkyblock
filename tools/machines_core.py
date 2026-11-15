@@ -17,7 +17,7 @@ from PIL import Image, ImageDraw
 MC = os.environ.get("MC_ASSETS", "/home/claude/mcassets/assets/minecraft") + "/textures/"
 PACK = os.environ.get("ROYAUMES_PACK", "/home/claude/rp/royaumes")
 NS = PACK + "/assets/cobbleislands"
-VERSION = 5            # version des modèles : les machines déjà posées sont reconstruites si elle change
+VERSION = 6            # version des modèles : les machines déjà posées sont reconstruites si elle change
 TICKS_PER_STEP = 5     # le serveur anime toutes les 5 ticks
 
 # ================================================================ textures peintes (16x16)
@@ -147,6 +147,15 @@ def tex_water():
                 d[sx, f * 16 + y] = ((150, 200, 246) if k < ln - 1 else (214, 236, 255)) + (255,)
     return im, {"animation": {"frametime": 2}}
 
+def tex_water_still():
+    """Eau calme (baquet, auge) : pas d'animation, juste deux reflets."""
+    im = _img(); d = im.load(); rnd = random.Random(26)
+    for y in range(16):
+        for x in range(16):
+            d[x, y] = _mul((52, 112, 196), 1.0 + rnd.uniform(-0.05, 0.05)) + (255,)
+    for (x, y) in ((1, 1), (2, 1), (1, 2), (4, 3)): d[x, y] = (150, 200, 246, 255)
+    return im
+
 def tex_glow():
     """Lumière chaude (vitre de lanterne, fenêtre éclairée) qui palpite doucement."""
     frames = 4
@@ -161,13 +170,14 @@ def tex_glow():
     return im, {"animation": {"frametime": 5, "interpolate": True}}
 
 def tex_window():
-    """Fenêtre à croisillons éclairée de l'intérieur."""
-    im = _img(); d = im.load()
+    """Fenêtre à petits carreaux sertis de plomb, éclairée de l'intérieur (carreaux de 3 px + 1 px de plomb)."""
+    im = _img(); d = im.load(); rnd = random.Random(28)
     for y in range(16):
         for x in range(16):
-            r = math.hypot(x - 7.5, y - 7.5) / 10.6
-            c = (255, int(214 - 60 * r), int(120 - 70 * r))
-            if x % 4 == 3 or y % 4 == 3: c = (74, 48, 30)
+            tone = random.Random((x // 4) * 7 + (y // 4) * 13).choice((0.9, 1.0, 1.0, 1.08))
+            c = _mul((255, 206, 112), tone)
+            if x % 4 == 0 and y % 4 == 0: c = _mul((255, 244, 200), tone)      # reflet en coin de carreau
+            if x % 4 == 3 or y % 4 == 3: c = (58, 44, 40)
             d[x, y] = c + (255,)
     return im
 
@@ -219,7 +229,7 @@ def tex_plaster():
 CUSTOM = {
     "sack": tex_sack, "sawdust": tex_sawdust, "leather": tex_leather, "hole": tex_hole, "rope": tex_rope,
     "iron_dark": tex_iron_dark, "steel": tex_steel, "blade": tex_blade, "thatch": tex_thatch, "shingle": tex_shingle,
-    "sail": tex_sail, "water": tex_water, "glow": tex_glow, "window": tex_window, "hot": tex_hot, "plaster": tex_plaster,
+    "sail": tex_sail, "water": tex_water, "water_still": tex_water_still, "glow": tex_glow, "window": tex_window, "hot": tex_hot, "plaster": tex_plaster,
     "banner_green": _banner((58, 128, 62), (232, 196, 84)), "banner_red": _banner((170, 44, 40), (232, 196, 84)),
     "banner_blue": _banner((50, 84, 168), (232, 196, 84)), "banner_gold": _banner((214, 160, 40), (120, 40, 36)),
     "ore_gold": tex_ore(31, (250, 214, 74)), "ore_iron": tex_ore(32, (216, 175, 147)),
@@ -516,6 +526,17 @@ def disc(m, c, r, a0, a1, tex, axis="x", face_tex=None):
             f2, t2 = (c[0] - k, b0, c[2] - r), (c[0] + k, b1, c[2] + r)
         m.box(f, t, tex, rot=(axis, ang, c) if ang else None, tile=False)
         m.box(f2, t2, tex, rot=(axis, ang, c) if ang else None, tile=False)
+
+def brace(m, x, y, z, length, sign, tex=DO, w=1.8, axis="z"):
+    """Contrefiche à 45° : part du point (x, y, z), monte de `length` en s'éloignant vers +X (sign=1) ou -X (sign=-1).
+    Avec axis="x", elle s'éloigne le long de Z. Les deux bouts sont à noyer dans le poteau et dans la poutre."""
+    L = length * math.sqrt(2)
+    if axis == "z":
+        f, t = ((x, y - w / 2, z - w / 2), (x + L, y + w / 2, z + w / 2)) if sign > 0 else ((x - L, y - w / 2, z - w / 2), (x, y + w / 2, z + w / 2))
+        m.box(f, t, tex, rot=("z", 45 * sign, (x, y, z)), tile=False)
+    else:
+        f, t = ((x - w / 2, y - w / 2, z), (x + w / 2, y + w / 2, z + L)) if sign > 0 else ((x - w / 2, y - w / 2, z - L), (x + w / 2, y + w / 2, z))
+        m.box(f, t, tex, rot=("x", -45 * sign, (x, y, z)), tile=False)
 
 def lantern(base, glow, x, y, z, hang=3):
     """Lanterne suspendue : chaîne et armature (socle), vitre lumineuse (pièce lumineuse). (x, y, z) = centre haut."""
