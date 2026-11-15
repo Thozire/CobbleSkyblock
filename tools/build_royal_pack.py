@@ -94,8 +94,9 @@ def java_escape(s):
 
 def build_java():
     chars = sorted(FONT.glyphs.keys())
-    cs = "".join(chars)
-    ws = "".join(chr(FONT.glyphs[c][1]) for c in chars)
+    hexs = "".join("%04x%02x" % (ord(c), FONT.glyphs[c][1]) for c in chars if ord(c) < 0x10000)
+    parts = [hexs[i:i + 120] for i in range(0, len(hexs), 120)]
+    table = "\n            + ".join('"%s"' % x for x in parts)
     src = f'''package fr.cobbleskyblock.islands;
 
 /** Généré par tools/build_royal_pack.py — ne pas modifier à la main. */
@@ -109,11 +110,12 @@ final class GuiFont {{
     static final String NEG = "{java_escape(''.join(NEG))}";
     static final String POS = "{java_escape(''.join(POS))}";
 
-    private static final String CHARS = "{java_escape(cs)}";
-    private static final String WIDTHS = "{java_escape(ws)}";
+    /** Paires « code (4 hex) + largeur (2 hex) » concaténées. */
+    private static final String TABLE = {table};
     private static final java.util.Map<Character, Integer> W = new java.util.HashMap<>();
     static {{
-        for (int i = 0; i < CHARS.length(); i++) W.put(CHARS.charAt(i), (int) WIDTHS.charAt(i));
+        for (int i = 0; i + 6 <= TABLE.length(); i += 6)
+            W.put((char) Integer.parseInt(TABLE.substring(i, i + 4), 16), Integer.parseInt(TABLE.substring(i + 4, i + 6), 16));
     }}
 
     /** Largeur en pixels d'un texte dans la police vanilla (sans gras). */
