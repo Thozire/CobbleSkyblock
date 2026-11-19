@@ -171,7 +171,7 @@ final class GuiFont {
         int w = 0;
         for (int i = 0; i < s.length(); i++) {
             char c = s.charAt(i);
-            w += c == ' ' ? 4 : W.getOrDefault(c, 6);
+            w += c == ' ' || c == '\u00a0' ? 4 : c == '\u202f' ? 3 : W.getOrDefault(c, 6);
         }
         return w;
     }

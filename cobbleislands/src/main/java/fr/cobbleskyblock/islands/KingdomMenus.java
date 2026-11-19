@@ -137,6 +137,7 @@ public final class KingdomMenus {
             zone(m, 4, 5, 5, 8, button(I_BLANK, "Aller à la capitale", RED, "§7Marché, classement et", "§7autres royaumes.", "",
                     "§8Raccourci : §e/capitale"), pl -> { pl.closeContainer(); cmd(pl, "capitale"); });
         });
+        IslandMenu.live(p, KingdomMenus::main);
     }
 
     private static void start(ServerPlayer p) {
@@ -199,6 +200,7 @@ public final class KingdomMenus {
             m.set(45, button(I_BLANK, "Retour", CREAM, "§7Revenir au menu du royaume"), KingdomMenus::main);
             m.set(53, button(I_BLANK, "Fermer", RED), ServerPlayer::closeContainer);
         });
+        IslandMenu.live(p, KingdomMenus::buildings);
     }
 
     private static String outputs(BuildingType t) {
@@ -272,6 +274,7 @@ public final class KingdomMenus {
             m.set(45, button(I_BLANK, "Retour", CREAM, "§7Revenir à la liste des bâtiments"), KingdomMenus::buildings);
             m.set(53, button(I_BLANK, "Fermer", RED), ServerPlayer::closeContainer);
         });
+        IslandMenu.live(p, pl -> building(pl, bid));
     }
 
     /** Ressources produites à ce niveau. */
@@ -416,7 +419,7 @@ public final class KingdomMenus {
                 bc < 0 ? "Maximum" : "Niv. " + is.machineLevel + " » " + (is.machineLevel + 1),
                 mc < 0 ? "Maximum" : "Niv. " + is.memberLevel + " » " + (is.memberLevel + 1)};
         String[] prices = {sc < 0 ? "" : Market.fmt(sc) + " écus", bc < 0 ? "" : Market.fmt(bc) + " écus", mc < 0 ? "" : Market.fmt(mc) + " écus"};
-        Component title = RoyalGui.domainTitle(new String[]{(2 * r + 1) + " × " + (2 * r + 1) + " blocs", is.buildings.size() + " / " + bm,
+        Component title = RoyalGui.domainTitle(new String[]{(2 * r + 1) + " × " + (2 * r + 1), is.buildings.size() + " / " + bm,
                         is.members.size() + " / " + mgr().maxMembers(is), Market.fmt(is.money) + " écus", is.open ? "Ouvertes" : "Fermées"},
                 levels, prices, is.open ? "Ouvertes" : "Fermées", is.open, owner ? "Abandonner" : "Quitter");
         IslandMenu.open(p, title, m -> {

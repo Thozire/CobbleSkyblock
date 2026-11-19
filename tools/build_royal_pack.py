@@ -111,7 +111,7 @@ def build_fonts(tile_providers):
     write_json(f"{NS}/font/gui.json", {"providers": [{"type": "space", "advances": adv}] + tile_providers})
     vanilla = json.load(open(f"{MC}/font/include/default.json"))["providers"]
     for dy in TEXT_DY:
-        provs = [{"type": "space", "advances": {" ": 4, "‌": 0}}]
+        provs = [{"type": "space", "advances": {" ": 4, "‌": 0, "\u202f": 3, "\u00a0": 4}}]
         for p in vanilla:
             q = dict(p)
             q["ascent"] = p.get("ascent", 7) - dy
@@ -311,7 +311,7 @@ final class GuiFont {{
         int w = 0;
         for (int i = 0; i < s.length(); i++) {{
             char c = s.charAt(i);
-            w += c == ' ' ? 4 : W.getOrDefault(c, 6);
+            w += c == ' ' || c == '\\u00a0' ? 4 : c == '\\u202f' ? 3 : W.getOrDefault(c, 6);
         }}
         return w;
     }}

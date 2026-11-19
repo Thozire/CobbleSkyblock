@@ -82,9 +82,9 @@ final class RoyalGui {
     static String fit(String s, int maxW) {
         if (GuiFont.width(s) <= maxW) return s;
         // 1) nombres longs en version courte (12 480 -> 12,5k), 2) sans l'unité, 3) coupe
-        java.util.regex.Matcher mt = java.util.regex.Pattern.compile("\\d{1,3}(?: \\d{3})+").matcher(s);
+        java.util.regex.Matcher mt = java.util.regex.Pattern.compile("\\d{1,3}(?:[ \u202F]\\d{3})+").matcher(s);
         StringBuilder sb = new StringBuilder();
-        while (mt.find()) mt.appendReplacement(sb, compact(Long.parseLong(mt.group().replace(" ", ""))));
+        while (mt.find()) mt.appendReplacement(sb, compact(Long.parseLong(mt.group().replace(" ", "").replace("\u202F", ""))));
         mt.appendTail(sb);
         s = sb.toString();
         if (GuiFont.width(s) <= maxW) return s;

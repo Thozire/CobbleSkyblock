@@ -1,6 +1,8 @@
 package fr.cobbleskyblock.islands;
 
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.protocol.game.ClientboundOpenScreenPacket;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
@@ -32,6 +34,10 @@ public class IslandMenu extends AbstractContainerMenu {
 
     private final SimpleContainer buttons = new SimpleContainer(54);
     private final Map<Integer, Consumer<ServerPlayer>> actions = new HashMap<>();
+    /** Page à redessiner toutes les secondes tant que le menu est ouvert (stock, trésor...). */
+    private Consumer<ServerPlayer> live;
+    private Component shownTitle;
+    private static boolean refreshing;
 
     public IslandMenu(int id) {
         super(MenuType.GENERIC_9x6, id);
@@ -87,10 +93,38 @@ public class IslandMenu extends AbstractContainerMenu {
     }
 
     public static void open(ServerPlayer p, Component title, Consumer<IslandMenu> fill) {
+        if (refreshing && p.containerMenu instanceof IslandMenu cur) {
+            // rafraîchissement sur place : mêmes cases, même fenêtre, pas de clignotement ni de souris recentrée
+            for (int i = 0; i < 54; i++) cur.buttons.setItem(i, ItemStack.EMPTY);
+            cur.actions.clear();
+            fill.accept(cur);
+            if (!title.equals(cur.shownTitle)) {
+                p.connection.send(new ClientboundOpenScreenPacket(cur.containerId, MenuType.GENERIC_9x6, title));
+                cur.shownTitle = title;
+                cur.sendAllDataToRemote();
+            } else cur.broadcastChanges();
+            return;
+        }
         p.openMenu(new SimpleMenuProvider((id, inv, pl) -> {
             IslandMenu m = new IslandMenu(id);
+            m.shownTitle = title;
             fill.accept(m);
             return m;
         }, title));
+    }
+
+    /** Rend la page ouverte « vivante » : elle sera reconstruite chaque seconde. */
+    public static void live(ServerPlayer p, Consumer<ServerPlayer> page) {
+        if (p.containerMenu instanceof IslandMenu m) m.live = page;
+    }
+
+    static void refreshLive(MinecraftServer server) {
+        for (ServerPlayer p : server.getPlayerList().getPlayers()) {
+            if (!(p.containerMenu instanceof IslandMenu m) || m.live == null) continue;
+            if (!m.getCarried().isEmpty()) continue;
+            refreshing = true;
+            try { m.live.accept(p); } catch (Exception e) { m.live = null; }
+            finally { refreshing = false; }
+        }
     }
 }
