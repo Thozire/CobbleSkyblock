@@ -4,18 +4,35 @@ package fr.cobbleskyblock.islands;
 final class GuiFont {
     private GuiFont() {}
 
-    /** Glyphes des tuiles du fond du menu principal (haut-gauche, haut-droit, bas-gauche, bas-droit). */
-    static final String MAIN_TILES = "\ue100\ue101\ue102\ue103";
-    /** Liste des bâtiments et boutique. */
-    static final String LIST_TILES = "\ue104\ue105\ue106\ue107";
-
-    /** Page d'un bâtiment, avec son nom en titre. */
-    static String buildingTiles(String id) {
-        return switch (id) {
+    /** Glyphes des 4 tuiles du fond d'une page (haut-gauche, haut-droit, bas-gauche, bas-droit). */
+    static String tiles(String page) {
+        return switch (page) {
+            case "main" -> "\ue100\ue101\ue102\ue103";
+            case "list" -> "\ue104\ue105\ue106\ue107";
+            case "scierie" -> "\ue108\ue109\ue10a\ue10b";
             case "ferme" -> "\ue10c\ue10d\ue10a\ue10b";
             case "mine" -> "\ue10e\ue10f\ue10a\ue10b";
             case "forge" -> "\ue110\ue111\ue10a\ue10b";
-            default -> "\ue108\ue109\ue10a\ue10b";
+            case "domain" -> "\ue112\ue113\ue114\ue115";
+            case "team" -> "\ue116\ue117\ue118\ue119";
+            case "invite" -> "\ue11a\ue11b\ue11c\ue11d";
+            default -> "\ue100\ue101\ue102\ue103";
+        };
+    }
+
+    /** Calques haute définition d'une page : suites (caractère, x, avance). */
+    static int[] overlays(String page) {
+        return switch (page) {
+            case "main" -> new int[]{58368, 198, 88, 58369, 198, 88};
+            case "list" -> new int[]{58370, 198, 88, 58371, 198, 88};
+            case "scierie" -> new int[]{58372, 12, 89, 58373, 198, 88, 58374, 198, 88};
+            case "ferme" -> new int[]{58375, 12, 89, 58376, 198, 88, 58377, 198, 88};
+            case "mine" -> new int[]{58378, 12, 89, 58379, 198, 88, 58380, 198, 88};
+            case "forge" -> new int[]{58381, 12, 89, 58382, 198, 88, 58383, 198, 88};
+            case "domain" -> new int[]{58370, 198, 88, 58371, 198, 88};
+            case "team" -> new int[]{58368, 198, 88, 58369, 198, 88};
+            case "invite" -> new int[]{58368, 198, 88, 58369, 198, 88};
+            default -> new int[0];
         };
     }
     static final int TILE_W = 220, CANVAS_X = -132;

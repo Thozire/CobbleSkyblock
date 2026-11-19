@@ -10,9 +10,9 @@ import json, math, os, random, sys
 from PIL import Image, ImageDraw
 
 MC = "/home/claude/mcassets/assets/minecraft"
-OX, OY = 132, 24           # position du coin du coffre dans le dessin
-W, H = 440, 270            # taille du dessin (tient dans un écran 1080p en échelle 4)
-TILE_W, TILE_H = 220, 135  # tuiles < 256 px
+OX, OY = 132, 80           # position du coin du coffre dans le dessin (64 px au-dessus pour les flèches des tours)
+W, H = 440, 326            # taille du dessin
+TILE_W, TILE_H = 220, 163  # tuiles < 256 px
 
 # ---------- palette ----------
 OUT = (34, 20, 14)

@@ -344,45 +344,59 @@ public final class KingdomMenus {
         Island is = mgr().islandOf(p.getUUID());
         if (is == null) { start(p); return; }
         boolean owner = is.isOwner(p.getUUID());
-        IslandMenu.open(p, Page.LIST, "Ta cour", m -> {
+        int online = 0;
+        for (UUID u : is.members.keySet()) if (mgr().server().getPlayerList().getPlayer(u) != null) online++;
+        int max = mgr().maxMembers(is), free = Math.max(0, max - is.members.size());
+        Component title = RoyalGui.teamTitle(new String[]{is.ownerName(), is.members.size() + " / " + max,
+                String.valueOf(online), String.valueOf(free), Market.fmt(is.money) + " écus"});
+        IslandMenu.open(p, title, m -> {
             int k = 0;
             for (Map.Entry<UUID, String> e : is.members.entrySet()) {
+                if (k >= 27) break;
                 UUID u = e.getKey();
                 String name = e.getValue();
                 boolean lord = is.isOwner(u);
-                boolean online = mgr().server().getPlayerList().getPlayer(u) != null;
-                List<String> lore = new ArrayList<>(List.of(lord ? "§6Seigneur" : "§fVassal", online ? "§aEn ligne" : "§8Hors ligne"));
+                boolean on = mgr().server().getPlayerList().getPlayer(u) != null;
+                List<String> lore = new ArrayList<>(List.of(lord ? "§6Seigneur" : "§fVassal", on ? "§aEn ligne" : "§8Hors ligne"));
                 if (owner && !lord) { lore.add(""); lore.add("§cClic : bannir du royaume"); }
                 ItemStack h = head(profileOf(u, name), name, lord ? GOLD : CREAM, lore.toArray(new String[0]));
-                m.set(LIST[k++], lord ? glow(h) : h, owner && !lord ? pl -> confirm(pl, "Bannir " + name + " ?",
+                m.set(k++, lord ? glow(h) : h, owner && !lord ? pl -> confirm(pl, "Bannir " + name + " ?",
                         head(profileOf(u, name), name, CREAM), ok -> { cmd(ok, "royaume exclure " + name); team(ok); }, KingdomMenus::team) : null);
             }
-            int free = mgr().maxMembers(is) - is.members.size();
-            for (int i = 0; i < free && k < 28; i++)
-                m.set(LIST[k++], button(I_INVITE, "Place libre", GREEN, owner ? "§7Invite quelqu'un !" : "§7En attente d'un vassal"),
+            for (int i = 0; i < free && k < 27; i++)
+                m.set(k++, button(I_INVITE, "Place libre", GREEN, owner ? "§7Clique pour inviter quelqu'un." : "§7En attente d'un vassal"),
                         owner ? KingdomMenus::invite : null);
-            backBtn(m, KingdomMenus::main);
-            if (owner) m.set(49, glow(button(I_INVITE, "Inviter", GREEN, "§7Choisis un joueur en ligne.")), KingdomMenus::invite);
-            closeBtn(m, 53);
+            ItemStack tip = owner ? button(I_BLANK, "Inviter un joueur", GREEN, "§7Choisis un joueur en ligne.",
+                    free > 0 ? "§7Places libres : §a" + free : "§cPlus de place : agrandis ta cour !")
+                    : button(I_BLANK, "Inviter un joueur", GRAY, "§8Réservé au seigneur");
+            zone(m, 3, 4, 0, 8, tip, owner ? KingdomMenus::invite : null);
+            m.set(45, button(I_BLANK, "Retour", CREAM, "§7Revenir au menu du royaume"), KingdomMenus::main);
+            m.set(53, button(I_BLANK, "Fermer", RED), ServerPlayer::closeContainer);
         });
     }
 
     private static void invite(ServerPlayer p) {
         Island is = mgr().islandOf(p.getUUID());
         if (is == null || !is.isOwner(p.getUUID())) { main(p); return; }
-        IslandMenu.open(p, Page.LIST, "Inviter un joueur", m -> {
+        List<ServerPlayer> cands = new ArrayList<>();
+        for (ServerPlayer t : mgr().server().getPlayerList().getPlayers())
+            if (t != p && !is.isMember(t.getUUID())) cands.add(t);
+        int max = mgr().maxMembers(is), free = Math.max(0, max - is.members.size());
+        Component title = RoyalGui.inviteTitle(new String[]{String.valueOf(cands.size()), String.valueOf(free), is.ownerName(),
+                is.members.size() + " / " + max, Market.fmt(is.money) + " écus"});
+        IslandMenu.open(p, title, m -> {
             int k = 0;
-            for (ServerPlayer t : mgr().server().getPlayerList().getPlayers()) {
-                if (k >= 28) break;
-                if (t == p || is.isMember(t.getUUID())) continue;
+            for (ServerPlayer t : cands) {
+                if (k >= 36) break;
                 String name = t.getGameProfile().getName();
                 Island other = mgr().islandOf(t.getUUID());
-                m.set(LIST[k++], head(t.getGameProfile(), name, CREAM, other == null ? "§7Sans royaume" : "§7A déjà un royaume", "", "§aClic : inviter"),
-                        pl -> { cmd(pl, "royaume inviter " + name); team(pl); });
+                m.set(k++, head(t.getGameProfile(), name, CREAM, other == null ? "§7Sans royaume" : "§7A déjà un royaume", "",
+                        free > 0 ? "§aClic : inviter" : "§cPlus de place dans ta cour"),
+                        free > 0 ? pl -> { cmd(pl, "royaume inviter " + name); team(pl); } : null);
             }
-            if (k == 0) m.set(LIST[10], button(I_EMPTY, "Personne à inviter", GRAY, "§7Aucun autre joueur en ligne."));
-            backBtn(m, KingdomMenus::team);
-            closeBtn(m, 53);
+            if (k == 0) m.set(13, button(I_EMPTY, "Personne à inviter", GRAY, "§7Aucun autre joueur en ligne."));
+            m.set(45, button(I_BLANK, "Retour", CREAM, "§7Revenir à ta cour"), KingdomMenus::team);
+            m.set(53, button(I_BLANK, "Fermer", RED), ServerPlayer::closeContainer);
         });
     }
 
@@ -393,15 +407,22 @@ public final class KingdomMenus {
         if (is == null) { start(p); return; }
         boolean owner = is.isOwner(p.getUUID());
         IslandConfig cfg = mgr().config();
-        IslandMenu.open(p, Page.DOMAIN, "Améliorer le royaume", m -> {
-            m.set(4, infoCard(is));
-            closeBtn(m, 8);
-            String who = "§8Réservé au seigneur";
+        String who = "§8Réservé au seigneur";
+        int r = mgr().radius(is);
+        int sc = cfg.sizeCost(is.sizeLevel + 1), nr = sc < 0 ? r : cfg.radiusFor(is.sizeLevel + 1);
+        int bc = cfg.machinesCost(is.machineLevel + 1), bm = mgr().maxMachines(is);
+        int mc = cfg.membersCost(is.memberLevel + 1);
+        String[] levels = {sc < 0 ? "Maximum" : "Niv. " + is.sizeLevel + " » " + (is.sizeLevel + 1),
+                bc < 0 ? "Maximum" : "Niv. " + is.machineLevel + " » " + (is.machineLevel + 1),
+                mc < 0 ? "Maximum" : "Niv. " + is.memberLevel + " » " + (is.memberLevel + 1)};
+        String[] prices = {sc < 0 ? "" : Market.fmt(sc) + " écus", bc < 0 ? "" : Market.fmt(bc) + " écus", mc < 0 ? "" : Market.fmt(mc) + " écus"};
+        Component title = RoyalGui.domainTitle(new String[]{(2 * r + 1) + " × " + (2 * r + 1) + " blocs", is.buildings.size() + " / " + bm,
+                        is.members.size() + " / " + mgr().maxMembers(is), Market.fmt(is.money) + " écus", is.open ? "Ouvertes" : "Fermées"},
+                levels, prices, is.open ? "Ouvertes" : "Fermées", is.open, owner ? "Abandonner" : "Quitter");
+        IslandMenu.open(p, title, m -> {
             // terrain : seule la bordure s'écarte
-            int sc = cfg.sizeCost(is.sizeLevel + 1);
-            int r = mgr().radius(is), nr = sc < 0 ? r : cfg.radiusFor(is.sizeLevel + 1);
-            m.set(20, sc < 0 ? glow(button(I_EXPAND, "Terrain au maximum", GOLD, "§7" + (2 * r + 1) + " × " + (2 * r + 1) + " blocs"))
-                    : button(I_EXPAND, "Agrandir le terrain", GREEN, "§7Niveau : §f" + is.sizeLevel + " §7→ §a" + (is.sizeLevel + 1),
+            zone(m, 0, 3, 0, 2, sc < 0 ? glow(button(I_BLANK, "Terrain au maximum", GOLD, "§7" + (2 * r + 1) + " × " + (2 * r + 1) + " blocs"))
+                    : button(I_BLANK, "Agrandir le terrain", GREEN, "§7Niveau : §f" + is.sizeLevel + " §7→ §a" + (is.sizeLevel + 1),
                     "§7Terrain : §f" + (2 * r + 1) + " × " + (2 * r + 1) + " §7→ §a" + (2 * nr + 1) + " × " + (2 * nr + 1) + " blocs",
                     "§8La bordure s'écarte : à toi de bâtir !", "",
                     "§7Prix : " + ecus(sc), owner ? (is.money >= sc ? "§aClic : agrandir" : "§cIl te manque " + Market.fmt(sc - is.money) + " écus") : who),
@@ -411,10 +432,8 @@ public final class KingdomMenus {
                         domain(pl);
                     });
             // nombre de bâtiments
-            int bc = cfg.machinesCost(is.machineLevel + 1);
-            int bm = mgr().maxMachines(is);
-            m.set(22, bc < 0 ? glow(button(I_BUILD, "Bâtiments au maximum", GOLD, "§7" + bm + " bâtiments"))
-                    : button(I_BUILD, "Plus de bâtiments", GOLD, "§7Niveau : §f" + is.machineLevel + " §7→ §a" + (is.machineLevel + 1),
+            zone(m, 0, 3, 3, 5, bc < 0 ? glow(button(I_BLANK, "Bâtiments au maximum", GOLD, "§7" + bm + " bâtiments"))
+                    : button(I_BLANK, "Plus de bâtiments", GOLD, "§7Niveau : §f" + is.machineLevel + " §7→ §a" + (is.machineLevel + 1),
                     "§7Bâtiments posés : §f" + is.buildings.size() + " / " + bm,
                     "§7Limite : §f" + bm + " §7→ §a" + cfg.machinesFor(is.machineLevel + 1) + " bâtiments", "",
                     "§7Prix : " + ecus(bc), owner ? (is.money >= bc ? "§aClic : améliorer" : "§cIl te manque " + Market.fmt(bc - is.money) + " écus") : who),
@@ -424,9 +443,8 @@ public final class KingdomMenus {
                         domain(pl);
                     });
             // membres
-            int mc = cfg.membersCost(is.memberLevel + 1);
-            m.set(24, mc < 0 ? glow(button(I_TEAM, "Cour au maximum", GOLD, "§7" + mgr().maxMembers(is) + " membres"))
-                    : button(I_TEAM, "Agrandir la cour", BLUE, "§7Niveau : §f" + is.memberLevel + " §7→ §a" + (is.memberLevel + 1),
+            zone(m, 0, 3, 6, 8, mc < 0 ? glow(button(I_BLANK, "Cour au maximum", GOLD, "§7" + mgr().maxMembers(is) + " membres"))
+                    : button(I_BLANK, "Agrandir la cour", BLUE, "§7Niveau : §f" + is.memberLevel + " §7→ §a" + (is.memberLevel + 1),
                     "§7Membres : §f" + is.members.size() + " / " + mgr().maxMembers(is),
                     "§7Limite : §f" + mgr().maxMembers(is) + " §7→ §a" + cfg.membersFor(is.memberLevel + 1) + " membres", "",
                     "§7Prix : " + ecus(mc), owner ? (is.money >= mc ? "§aClic : améliorer" : "§cIl te manque " + Market.fmt(mc - is.money) + " écus") : who),
@@ -435,20 +453,21 @@ public final class KingdomMenus {
                         pl.sendSystemMessage(err == null ? Msg.ok("Ta cour peut accueillir plus de monde !") : Msg.err(err));
                         domain(pl);
                     });
-            m.set(39, button(is.open ? I_OPEN : I_CLOSED, is.open ? "Portes ouvertes" : "Portes fermées", is.open ? GREEN : RED,
+            zone(m, 4, 4, 0, 3, button(I_BLANK, is.open ? "Portes ouvertes" : "Portes fermées", is.open ? GREEN : RED,
                     "§7Les autres joueurs " + (is.open ? "§apeuvent" : "§cne peuvent pas"), "§7visiter ton domaine.", "",
                     owner ? "§eClic : changer" : who),
                     owner ? pl -> { cmd(pl, is.open ? "royaume fermer" : "royaume ouvrir"); domain(pl); } : null);
             if (owner) {
-                m.set(41, button(I_DEMOLISH, "Abandonner le royaume", RED, "§7Supprime définitivement", "§7ton royaume."),
+                zone(m, 4, 4, 5, 8, button(I_BLANK, "Abandonner le royaume", RED, "§7Supprime définitivement", "§7ton royaume."),
                         pl -> confirm(pl, "Abandonner le royaume ?", button(I_DEMOLISH, "Attention !", RED, "§7Domaine, bâtiments et trésor", "§7seront perdus §cdéfinitivement§7."),
                                 ok -> { ok.closeContainer(); cmd(ok, "royaume supprimer"); cmd(ok, "royaume supprimer confirmer"); }, KingdomMenus::domain));
             } else {
-                m.set(41, button(I_BACK, "Quitter le royaume", RED, "§7Quitter le royaume de " + is.ownerName() + "."),
+                zone(m, 4, 4, 5, 8, button(I_BLANK, "Quitter le royaume", RED, "§7Quitter le royaume de " + is.ownerName() + "."),
                         pl -> confirm(pl, "Quitter le royaume ?", button(I_BACK, "Quitter", RED),
                                 ok -> { ok.closeContainer(); cmd(ok, "royaume quitter"); }, KingdomMenus::domain));
             }
-            backBtn(m, KingdomMenus::main);
+            m.set(45, button(I_BLANK, "Retour", CREAM, "§7Revenir au menu du royaume"), KingdomMenus::main);
+            m.set(53, button(I_BLANK, "Fermer", RED), ServerPlayer::closeContainer);
         });
     }
 

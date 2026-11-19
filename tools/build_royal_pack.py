@@ -21,7 +21,7 @@ MC = "/home/claude/mcassets/assets/minecraft"
 NS = f"{PACK}/assets/cobbleislands"
 
 # Polices décalées utilisées par le menu principal (haut du texte = 6 + dy, repère du coffre)
-TEXT_DY = [69, 89, 109, 129, 149, 156]
+TEXT_DY = [60, 69, 71, 88, 89, 109, 129, 149, 156]
 
 NEG = [chr(0xF801 + i) for i in range(10)]   # -1, -2, -4 … -512
 POS = [chr(0xF821 + i) for i in range(10)]   # +1, +2, +4 … +512
@@ -34,18 +34,21 @@ def write_json(path, obj):
 
 # Pages dessinées : nom -> (mise en page, titre de la bannière). Une page = 4 tuiles ; les tuiles identiques
 # d'une page à l'autre (le bas du château) ne sont stockées qu'une fois.
-PAGES = {"main": ("main", "ROYAUME"), "list": ("list", "BATIMENTS"), "scierie": ("building", "SCIERIE"),
-         "ferme": ("building", "FERME"), "mine": ("building", "MINE"), "forge": ("building", "FORGE")}
+PAGES = {"main": ("main", "ROYAUME", "roi"), "list": ("list", "BATIMENTS", "batiments"),
+         "scierie": ("building", "SCIERIE", "bucheron"), "ferme": ("building", "FERME", "fermier"),
+         "mine": ("building", "MINE", "mineur"), "forge": ("building", "FORGE", "forgeron"),
+         "domain": ("domain", "AMELIORER", "batiments"), "team": ("team", "MEMBRES", "roi"), "invite": ("invite", "INVITER", "roi")}
 PAGE_CHARS = {}                       # nom -> les 4 caractères de ses tuiles
+PAGE_OVERLAYS = {}                    # nom -> [(caractère, x, avance)] des calques HD (niche, tableau)
 
 def build_tiles():
-    import hashlib, shutil
+    import hashlib, shutil, math
     d = f"{NS}/textures/font"
     if os.path.isdir(d): shutil.rmtree(d)
     os.makedirs(d)
-    out, seen = [], {}
-    for page, (layout, title) in PAGES.items():
-        img = royal_v8.render(layout, title)
+    out, seen, seen_hd = [], {}, {}
+    for page, (layout, title, who) in PAGES.items():
+        img, layers = royal_v8.render(layout, title, who)
         assert img.size == (W, H)
         chars = ""
         for r in range(2):
@@ -64,6 +67,25 @@ def build_tiles():
                                 "ascent": 13 - top, "chars": [ch]})
                 chars += seen[h]
         PAGE_CHARS[page] = chars
+        # calques HD : 2 pixels de texture par pixel d'interface, découpés en bandes de 128 px d'interface au plus
+        ov = []
+        for (im, x, y, w, hgt) in layers:
+            n = math.ceil(hgt / 128)
+            hs = [hgt // n + (1 if i < hgt % n else 0) for i in range(n)]
+            yy = y
+            for k, ph in enumerate(hs):
+                part = im.crop((0, (yy - y) * 2, w * 2, (yy - y + ph) * 2)).copy()
+                if part.getpixel((w * 2 - 1, 0))[3] == 0: part.putpixel((w * 2 - 1, 0), (0, 0, 0, 1))
+                hh = hashlib.sha1(part.tobytes()).hexdigest() + f"{x},{yy}"
+                if hh not in seen_hd:
+                    ch = chr(0xE400 + len(seen_hd)); seen_hd[hh] = ch
+                    name = f"hd_{page}_{k}_{x}_{yy}.png".replace("-", "m")
+                    part.save(f"{d}/{name}")
+                    out.append({"type": "bitmap", "file": f"cobbleislands:font/{name}", "height": ph,
+                                "ascent": 13 - yy, "chars": [ch]})
+                ov.append((seen_hd[hh], x, w + 1))
+                yy += ph
+        PAGE_OVERLAYS[page] = ov
     return out
 
 def _unused_page_tiles(page, TILE_CHARS):
@@ -248,24 +270,27 @@ def build_java():
     hexs = "".join("%04x%02x" % (ord(c), FONT.glyphs[c][1]) for c in chars if ord(c) < 0x10000)
     parts = [hexs[i:i + 120] for i in range(0, len(hexs), 120)]
     table = "\n            + ".join('"%s"' % x for x in parts)
+    tiles_sw = "\n".join(f'            case "{k}" -> "{java_escape(v)}";' for k, v in PAGE_CHARS.items())
+    ov_sw = "\n".join(f'            case "{k}" -> new int[]{{{", ".join(f"{ord(c)}, {x}, {a}" for c, x, a in v)}}};' for k, v in PAGE_OVERLAYS.items())
     src = f'''package fr.cobbleskyblock.islands;
 
 /** Généré par tools/build_royal_pack.py — ne pas modifier à la main. */
 final class GuiFont {{
     private GuiFont() {{}}
 
-    /** Glyphes des tuiles du fond du menu principal (haut-gauche, haut-droit, bas-gauche, bas-droit). */
-    static final String MAIN_TILES = "{java_escape(PAGE_CHARS['main'])}";
-    /** Liste des bâtiments et boutique. */
-    static final String LIST_TILES = "{java_escape(PAGE_CHARS['list'])}";
+    /** Glyphes des 4 tuiles du fond d'une page (haut-gauche, haut-droit, bas-gauche, bas-droit). */
+    static String tiles(String page) {{
+        return switch (page) {{
+{tiles_sw}
+            default -> "{java_escape(PAGE_CHARS['main'])}";
+        }};
+    }}
 
-    /** Page d'un bâtiment, avec son nom en titre. */
-    static String buildingTiles(String id) {{
-        return switch (id) {{
-            case "ferme" -> "{java_escape(PAGE_CHARS['ferme'])}";
-            case "mine" -> "{java_escape(PAGE_CHARS['mine'])}";
-            case "forge" -> "{java_escape(PAGE_CHARS['forge'])}";
-            default -> "{java_escape(PAGE_CHARS['scierie'])}";
+    /** Calques haute définition d'une page : suites (caractère, x, avance). */
+    static int[] overlays(String page) {{
+        return switch (page) {{
+{ov_sw}
+            default -> new int[0];
         }};
     }}
     static final int TILE_W = {TILE_W}, CANVAS_X = {-OX};
