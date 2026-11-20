@@ -2,7 +2,12 @@ hash-format = "sha256"
 
 [[files]]
 file = "mods/cobbleislands.pw.toml"
-hash = "fb711621a662169ad5105955df81fdb9818bc719b4e416f0668ea2688f23e5fb"
+hash = "2b3688ec79034dd5d4c26521e1f89906cdd80d1818d6993309cf4acf977173b3"
+metafile = true
+
+[[files]]
+file = "mods/cobblemon.pw.toml"
+hash = "7b456ba44d7ffde560f6a98edb9012fe17a8e47a74ff3701ec9026c07d5b2c62"
 metafile = true
 
 [[files]]
@@ -11,5 +16,5 @@ hash = "1ed7a6439d9c3cd9bc8e7db6a4362eb710de0f4da90b619f883e99f5765e96c0"
 metafile = true
 
 [[files]]
-file = "resourcepacks/RoyaumesPack.zip"
-hash = "0cfbad7be990a7f5c925234743acb91a821bf244ee62c3db276321b378830611"
+file = "resourcepacks/FusionMachinePack.zip"
+hash = "7a4d1b0502122d1722cb51b82ab7c27e55a3dfc834431ba2c4b16dcc3ec5604d"

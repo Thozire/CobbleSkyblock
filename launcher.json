@@ -1,18 +1,18 @@
 {
   "server": "92.161.33.145",
-  "serverName": "Royaumes",
+  "serverName": "CobbleSkyblock",
   "latestLauncher": "1.0.0",
   "message": "",
   "news": [
     {
-      "title": "Bienvenue dans les Royaumes !",
-      "text": "Fonde ton royaume, construis scieries, fermes et mines, et deviens le plus riche du serveur.",
-      "date": "15/11/2026"
+      "title": "Bienvenue sur CobbleSkyblock !",
+      "text": "Le launcher est en place : les mods se mettent à jour tout seuls à chaque lancement.",
+      "date": "12/11/2026"
     },
     {
-      "title": "Joue en équipe",
-      "text": "Invite tes amis dans ta cour avec /royaume inviter <pseudo>.",
-      "date": "15/11/2026"
+      "title": "Machine à fusion",
+      "text": "La machine à fusion vous attend sur l'île de départ.",
+      "date": "12/11/2026"
     }
   ]
 }

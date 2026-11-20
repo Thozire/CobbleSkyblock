@@ -1,18 +1,19 @@
 package fr.cobbleskyblock.islands;
 
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.protocol.game.ClientboundOpenScreenPacket;
-import net.minecraft.server.MinecraftServer;
+import net.minecraft.network.chat.MutableComponent;
+import net.minecraft.network.chat.Style;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.SimpleMenuProvider;
+import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.inventory.AbstractContainerMenu;
+import net.minecraft.world.inventory.ChestMenu;
 import net.minecraft.world.inventory.ClickType;
 import net.minecraft.world.inventory.MenuType;
-import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 
 import java.util.HashMap;
@@ -20,37 +21,20 @@ import java.util.Map;
 import java.util.function.Consumer;
 
 /**
- * Menu « coffre » 6 rangées dont les objets sont des boutons.
- * <ul>
- * <li>Le fond (pages dessinées) est fait de glyphes de la police du resource pack, placés dans le titre.</li>
- * <li>Les 36 cases du bas (l'inventaire du joueur) pointent vers un inventaire vide :
- * le joueur ne voit pas ses objets dans le menu, et ses vrais objets ne sont jamais touchés.
- * À la fermeture, on renvoie son vrai inventaire à son client.</li>
- * </ul>
+ * Menu "coffre" 6 rangées dont les objets sont des boutons. Rien ne peut être
+ * pris ni déposé. Le titre utilise la police du resource pack pour afficher le
+ * fond personnalisé (glyphe  décalé par des espaces négatifs).
  */
-public class IslandMenu extends AbstractContainerMenu {
-    /** Pages du menu. Seule la page principale a déjà son fond dessiné (voir RoyalGui). */
-    public enum Page { MAIN, LIST, BUILDING, DOMAIN, CONFIRM, START }
-
-    private final SimpleContainer buttons = new SimpleContainer(54);
+public class IslandMenu extends ChestMenu {
+    private static final ResourceLocation GUI_FONT = ResourceLocation.fromNamespaceAndPath("cobbleislands", "gui");
     private final Map<Integer, Consumer<ServerPlayer>> actions = new HashMap<>();
-    /** Page à redessiner toutes les secondes tant que le menu est ouvert (stock, trésor...). */
-    private Consumer<ServerPlayer> live;
-    private Component shownTitle;
-    private static boolean refreshing;
 
-    public IslandMenu(int id) {
-        super(MenuType.GENERIC_9x6, id);
-        for (int r = 0; r < 6; r++)
-            for (int c = 0; c < 9; c++) addSlot(new Slot(buttons, c + r * 9, 8 + c * 18, 18 + r * 18));
-        SimpleContainer hidden = new SimpleContainer(36);
-        for (int r = 0; r < 3; r++)
-            for (int c = 0; c < 9; c++) addSlot(new Slot(hidden, 9 + c + r * 9, 8 + c * 18, 140 + r * 18));
-        for (int c = 0; c < 9; c++) addSlot(new Slot(hidden, c, 8 + c * 18, 198));
+    public IslandMenu(int id, Inventory inv) {
+        super(MenuType.GENERIC_9x6, id, inv, new SimpleContainer(54), 6);
     }
 
     public void set(int slot, ItemStack stack, Consumer<ServerPlayer> action) {
-        buttons.setItem(slot, stack);
+        getContainer().setItem(slot, stack);
         if (action != null) actions.put(slot, action);
         else actions.remove(slot);
     }
@@ -62,10 +46,11 @@ public class IslandMenu extends AbstractContainerMenu {
         if (player instanceof ServerPlayer sp && slotId >= 0 && slotId < 54 && type != ClickType.QUICK_CRAFT) {
             Consumer<ServerPlayer> a = actions.get(slotId);
             if (a != null) {
-                sp.playNotifySound(SoundEvents.UI_BUTTON_CLICK.value(), SoundSource.MASTER, 0.5f, 1.0f);
+                sp.playNotifySound(SoundEvents.UI_BUTTON_CLICK.value(), SoundSource.MASTER, 0.5f, 1.2f);
                 a.accept(sp);
             }
         }
+        // on annule tout déplacement d'objet et on resynchronise l'écran du joueur
         setCarried(ItemStack.EMPTY);
         sendAllDataToRemote();
     }
@@ -76,55 +61,18 @@ public class IslandMenu extends AbstractContainerMenu {
     @Override
     public boolean stillValid(Player player) { return true; }
 
-    @Override
-    public void removed(Player player) {
-        super.removed(player);
-        // le client a affiché un inventaire vide : on lui renvoie le vrai
-        if (player instanceof ServerPlayer sp) sp.inventoryMenu.sendAllDataToRemote();
+    /** Titre : fond personnalisé + texte. */
+    public static Component title(String text) {
+        MutableComponent bg = Component.literal("").withStyle(Style.EMPTY.withFont(GUI_FONT).withColor(0xFFFFFF));
+        return bg.append(Component.literal(text).withStyle(s -> s.withColor(0xF3E8FF).withBold(true)));
     }
 
-    /** Titre simple (pages sans fond dessiné) : texte vanilla sur le coffre gris. */
-    public static Component title(Page page, String text) {
-        return Component.literal(text);
-    }
-
-    public static void open(ServerPlayer p, Page page, String title, Consumer<IslandMenu> fill) {
-        open(p, title(page, title), fill);
-    }
-
-    public static void open(ServerPlayer p, Component title, Consumer<IslandMenu> fill) {
-        if (refreshing && p.containerMenu instanceof IslandMenu cur) {
-            // rafraîchissement sur place : mêmes cases, même fenêtre, pas de clignotement ni de souris recentrée
-            for (int i = 0; i < 54; i++) cur.buttons.setItem(i, ItemStack.EMPTY);
-            cur.actions.clear();
-            fill.accept(cur);
-            if (!title.equals(cur.shownTitle)) {
-                p.connection.send(new ClientboundOpenScreenPacket(cur.containerId, MenuType.GENERIC_9x6, title));
-                cur.shownTitle = title;
-                cur.sendAllDataToRemote();
-            } else cur.broadcastChanges();
-            return;
-        }
+    /** Ouvre un menu rempli par {@code fill}. */
+    public static void open(ServerPlayer p, String title, Consumer<IslandMenu> fill) {
         p.openMenu(new SimpleMenuProvider((id, inv, pl) -> {
-            IslandMenu m = new IslandMenu(id);
-            m.shownTitle = title;
+            IslandMenu m = new IslandMenu(id, inv);
             fill.accept(m);
             return m;
-        }, title));
-    }
-
-    /** Rend la page ouverte « vivante » : elle sera reconstruite chaque seconde. */
-    public static void live(ServerPlayer p, Consumer<ServerPlayer> page) {
-        if (p.containerMenu instanceof IslandMenu m) m.live = page;
-    }
-
-    static void refreshLive(MinecraftServer server) {
-        for (ServerPlayer p : server.getPlayerList().getPlayers()) {
-            if (!(p.containerMenu instanceof IslandMenu m) || m.live == null) continue;
-            if (!m.getCarried().isEmpty()) continue;
-            refreshing = true;
-            try { m.live.accept(p); } catch (Exception e) { m.live = null; }
-            finally { refreshing = false; }
-        }
+        }, title(title)));
     }
 }

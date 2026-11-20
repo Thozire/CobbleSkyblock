@@ -2,7 +2,7 @@ name: CobbleIslands
 
 on:
   push:
-    branches: ["**"]
+    branches: [main]
     paths: ["cobbleislands/**", ".github/workflows/cobbleislands.yml"]
   workflow_dispatch:
 
@@ -29,10 +29,8 @@ jobs:
         run: gradle build --no-daemon --stacktrace
         working-directory: cobbleislands
       - name: Publication dans le modpack
-        if: github.ref == 'refs/heads/main'
         run: python3 tools/publish_mod.py
       - name: Commit
-        if: github.ref == 'refs/heads/main'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"

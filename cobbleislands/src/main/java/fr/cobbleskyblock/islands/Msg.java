@@ -11,7 +11,7 @@ public final class Msg {
     private Msg() {}
 
     public static MutableComponent prefix() {
-        return Component.literal("⚜ ").withStyle(ChatFormatting.GOLD);
+        return Component.literal("[Île] ").withStyle(ChatFormatting.LIGHT_PURPLE);
     }
 
     public static MutableComponent ok(String s) {
