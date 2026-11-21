@@ -1,6 +1,6 @@
 # CobbleSkyblock Launcher — compilation
 
-Go 1.24+, aucune dépendance externe.
+Go 1.24+, aucune dépendance externe. Chargeur : NeoForge (installeur officiel lancé en mode client au premier lancement).
 
     GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -ldflags "-H windowsgui -s -w" -o CobbleSkyblock-Launcher.exe .
 

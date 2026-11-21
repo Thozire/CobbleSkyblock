@@ -5,7 +5,7 @@ package main
 // pouvoir changer sans redistribuer l'exe.
 const (
 	LauncherName    = "CobbleSkyblock Launcher"
-	LauncherVersion = "1.0.0"
+	LauncherVersion = "2.0.0"
 	DataDirName     = ".cobbleskyblock"
 
 	// Application Azure "CobbleSkyblock Launcher" (comptes Microsoft personnels).
@@ -17,6 +17,10 @@ const (
 	ReleasesURL   = "https://github.com/Thozire/CobbleSkyblock/raw/main/launcher/CobbleSkyblock-Launcher.exe"
 
 	MCVersion     = "1.21.1"
-	FabricLoader  = "0.20.1"
 	DefaultServer = "localhost"
+
+	// NeoForge (MineColonies). L'installeur officiel est lancé en mode client
+	// la première fois ; son empreinte est vérifiée avant de l'exécuter.
+	NeoForgeVersion       = "21.1.267"
+	NeoForgeInstallerSHA1 = "4565232f0bf231d0edfe512b949664dc5ff88fd8"
 )

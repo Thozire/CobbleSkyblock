@@ -1,13 +1,13 @@
-name = "CobbleSkyblock"
+name = "MineColonies entre potes"
 author = "Thozire"
-version = "1.0.0"
+version = "2.0.0"
 pack-format = "packwiz:1.1.0"
 
 [index]
 file = "index.toml"
 hash-format = "sha256"
-hash = "c7e10a3b83f449d89eea218f47e73bca69c995dcbe704ee4735d6abb4526db1d"
+hash = "520a24ab847a6da2bf1517db06fefed1be8b8231e84b501b684ecdd7f111492f"
 
 [versions]
-fabric = "0.20.1"
 minecraft = "1.21.1"
+neoforge = "21.1.267"

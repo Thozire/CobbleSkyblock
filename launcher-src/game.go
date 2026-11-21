@@ -235,14 +235,13 @@ func (g *Game) ensureJava(component string) (string, error) {
 	return rt, downloadAll("Installation de Java", tasks, g.Deep, g.Progress)
 }
 
-func (g *Game) loadVersions() (*VersionJSON, *VersionJSON, error) {
-	g.p("Lecture des versions…", 0)
+func (g *Game) loadVersions() (*VersionJSON, error) {
 	var man struct {
 		Versions []struct{ ID, URL string } `json:"versions"`
 	}
 	vdir := filepath.Join(g.Dir, "versions")
 	if err := cachedJSON(versionManifest, filepath.Join(vdir, "version_manifest_v2.json"), &man); err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	var vurl string
 	for _, v := range man.Versions {
@@ -252,32 +251,100 @@ func (g *Game) loadVersions() (*VersionJSON, *VersionJSON, error) {
 	}
 	var van VersionJSON
 	if err := cachedJSON(vurl, filepath.Join(vdir, MCVersion, MCVersion+".json"), &van); err != nil {
-		return nil, nil, err
+		return nil, err
 	}
-	var fab VersionJSON
-	fid := "fabric-loader-" + FabricLoader + "-" + MCVersion
-	if err := cachedJSON(fmt.Sprintf("https://meta.fabricmc.net/v2/versions/loader/%s/%s/profile/json", MCVersion, FabricLoader),
-		filepath.Join(vdir, fid, fid+".json"), &fab); err != nil {
-		return nil, nil, err
-	}
-	return &van, &fab, nil
+	return &van, nil
 }
 
-// classpath fusionne les bibliothèques vanilla et Fabric (Fabric gagne en cas de doublon).
-func (g *Game) libraries(van, fab *VersionJSON) ([]dlTask, []string) {
+func neoForgeID() string { return "neoforge-" + NeoForgeVersion }
+
+// ensureNeoForge lance l'installeur officiel de NeoForge en mode client (une seule
+// fois) : il télécharge ses bibliothèques et prépare le jeu patché dans libraries/.
+// Il a besoin de Minecraft vanilla déjà présent (versions/1.21.1) et d'un
+// launcher_profiles.json dans le dossier.
+func (g *Game) ensureNeoForge(javaDir string) (*VersionJSON, error) {
+	id := neoForgeID()
+	vjson := filepath.Join(g.Dir, "versions", id, id+".json")
+	marker := filepath.Join(g.Dir, "libraries", "net", "neoforged", "neoforge", NeoForgeVersion, id+"-client.jar")
+	_, e1 := os.Stat(vjson)
+	_, e2 := os.Stat(marker)
+	if e1 != nil || e2 != nil {
+		g.p("Installation de NeoForge (une seule fois, ça peut prendre 1 à 2 minutes)…", 0)
+		inst := filepath.Join(g.Dir, "installers", id+"-installer.jar")
+		url := fmt.Sprintf("https://maven.neoforged.net/releases/net/neoforged/neoforge/%s/%s-installer.jar", NeoForgeVersion, id)
+		if err := downloadAll("Installeur NeoForge", []dlTask{{URL: url, Path: inst, SHA1: NeoForgeInstallerSHA1}}, true, g.Progress); err != nil {
+			return nil, err
+		}
+		if fileSHA1(inst) != NeoForgeInstallerSHA1 {
+			os.Remove(inst)
+			return nil, fmt.Errorf("l'installeur NeoForge téléchargé est corrompu, relance le launcher")
+		}
+		prof := filepath.Join(g.Dir, "launcher_profiles.json")
+		if _, err := os.Stat(prof); err != nil {
+			os.WriteFile(prof, []byte(`{"profiles":{}}`), 0644)
+		}
+		java := filepath.Join(javaDir, "bin", "java")
+		if osName() == "windows" {
+			java += ".exe"
+		}
+		c := exec.Command(java, "-jar", inst, "--install-client", g.Dir)
+		c.Dir = filepath.Dir(inst)
+		hideWindow(c)
+		out, _ := c.StdoutPipe()
+		c.Stderr = c.Stdout
+		if err := c.Start(); err != nil {
+			return nil, err
+		}
+		sc := bufio.NewScanner(out)
+		var tail []string
+		n := 0.0
+		for sc.Scan() {
+			line := sc.Text()
+			if g.Log != nil {
+				g.Log("[neoforge] " + line)
+			}
+			tail = append(tail, line)
+			if len(tail) > 5 {
+				tail = tail[1:]
+			}
+			n++
+			g.p("Installation de NeoForge (une seule fois, ça peut prendre 1 à 2 minutes)…", n/(n+200))
+		}
+		if err := c.Wait(); err != nil {
+			return nil, fmt.Errorf("l'installation de NeoForge a échoué : %s", strings.Join(tail, " | "))
+		}
+		if _, err := os.Stat(marker); err != nil {
+			return nil, fmt.Errorf("NeoForge ne s'est pas installé correctement : %s", strings.Join(tail, " | "))
+		}
+	}
+	b, err := os.ReadFile(vjson)
+	if err != nil {
+		return nil, fmt.Errorf("profil NeoForge introuvable : %v", err)
+	}
+	var neo VersionJSON
+	if err := json.Unmarshal(b, &neo); err != nil {
+		return nil, err
+	}
+	return &neo, nil
+}
+
+// classpath fusionne les bibliothèques vanilla et NeoForge (NeoForge gagne en cas de doublon).
+func (g *Game) libraries(van, neo *VersionJSON) ([]dlTask, []string) {
 	libDir := filepath.Join(g.Dir, "libraries")
 	type entry struct {
 		key  string
 		task dlTask
 	}
 	var order []entry
-	add := func(l Library, isFabric bool) {
+	add := func(l Library, isLoader bool) {
 		if !rulesAllow(l.Rules) {
 			return
 		}
 		var t dlTask
 		if a := l.Downloads.Artifact; a != nil && a.URL != "" {
 			t = dlTask{URL: a.URL, Path: filepath.Join(libDir, filepath.FromSlash(a.Path)), SHA1: a.SHA1, Size: a.Size}
+		} else if a != nil && a.Path != "" {
+			t = dlTask{Path: filepath.Join(libDir, filepath.FromSlash(a.Path))} // créé par l'installeur NeoForge
 		} else if l.URL != "" {
 			mp := mavenPath(l.Name)
 			base := strings.TrimRight(l.URL, "/") + "/"
@@ -288,7 +355,7 @@ func (g *Game) libraries(van, fab *VersionJSON) ([]dlTask, []string) {
 		k := libKey(l.Name)
 		for i, e := range order {
 			if e.key == k {
-				if isFabric {
+				if isLoader {
 					order[i].task = t
 				}
 				return
@@ -299,13 +366,17 @@ func (g *Game) libraries(van, fab *VersionJSON) ([]dlTask, []string) {
 	for _, l := range van.Libraries {
 		add(l, false)
 	}
-	for _, l := range fab.Libraries {
-		add(l, true)
+	if neo != nil {
+		for _, l := range neo.Libraries {
+			add(l, true)
+		}
 	}
 	var tasks []dlTask
 	var cp []string
 	for _, e := range order {
-		tasks = append(tasks, e.task)
+		if e.task.URL != "" {
+			tasks = append(tasks, e.task)
+		}
 		cp = append(cp, e.task.Path)
 	}
 	return tasks, cp
@@ -391,15 +462,15 @@ type LaunchOptions struct {
 }
 
 type installed struct {
-	van, fab *VersionJSON
+	van, neo *VersionJSON
 	javaDir  string
 	cp       []string
 	logCfg   string
 }
 
-// install télécharge / met à jour Java, Minecraft, Fabric, les ressources et le modpack.
+// install télécharge / met à jour Java, Minecraft, NeoForge, les ressources et le modpack.
 func (g *Game) install() (*installed, error) {
-	van, fab, err := g.loadVersions()
+	van, err := g.loadVersions()
 	if err != nil {
 		return nil, err
 	}
@@ -407,23 +478,51 @@ func (g *Game) install() (*installed, error) {
 	if err != nil {
 		return nil, err
 	}
-	libTasks, cp := g.libraries(van, fab)
+	// 1. Minecraft vanilla (l'installeur NeoForge en a besoin)
+	vanTasks, _ := g.libraries(van, nil)
 	clientJar := filepath.Join(g.Dir, "versions", MCVersion, MCVersion+".jar")
-	libTasks = append(libTasks, dlTask{URL: van.Downloads.Client.URL, Path: clientJar, SHA1: van.Downloads.Client.SHA1, Size: van.Downloads.Client.Size})
+	vanTasks = append(vanTasks, dlTask{URL: van.Downloads.Client.URL, Path: clientJar, SHA1: van.Downloads.Client.SHA1, Size: van.Downloads.Client.Size})
 	logCfg := filepath.Join(g.Dir, "assets", "log_configs", van.Logging.Client.File.ID)
 	if van.Logging.Client.File.URL != "" {
-		libTasks = append(libTasks, dlTask{URL: van.Logging.Client.File.URL, Path: logCfg, SHA1: van.Logging.Client.File.SHA1})
+		vanTasks = append(vanTasks, dlTask{URL: van.Logging.Client.File.URL, Path: logCfg, SHA1: van.Logging.Client.File.SHA1})
 	}
-	if err := downloadAll("Fichiers de Minecraft", libTasks, g.Deep, g.Progress); err != nil {
+	if err := downloadAll("Fichiers de Minecraft", vanTasks, g.Deep, g.Progress); err != nil {
 		return nil, err
 	}
+	// 2. NeoForge
+	neo, err := g.ensureNeoForge(javaDir)
+	if err != nil {
+		return nil, err
+	}
+	libTasks, cp := g.libraries(van, neo)
+	if err := downloadAll("Bibliothèques NeoForge", libTasks, g.Deep, g.Progress); err != nil {
+		return nil, err
+	}
+	// Le jeu doit s'appeler versions/<id>/<id>.jar : NeoForge l'ignore via -DignoreList
+	// (avec le nom 1.21.1.jar, FML le prendrait pour un mod et planterait).
+	verJar := filepath.Join(g.Dir, "versions", neo.ID, neo.ID+".jar")
+	if st, err := os.Stat(verJar); err != nil || st.Size() != van.Downloads.Client.Size {
+		if err := copyFile(clientJar, verJar); err != nil {
+			return nil, err
+		}
+	}
+	cp = append(cp, verJar)
 	if err := g.assets(van); err != nil {
 		return nil, err
 	}
 	if err := g.syncModpack(javaDir); err != nil {
 		return nil, err
 	}
-	return &installed{van, fab, javaDir, append(cp, clientJar), logCfg}, nil
+	return &installed{van, neo, javaDir, cp, logCfg}, nil
+}
+
+func copyFile(src, dst string) error {
+	b, err := os.ReadFile(src)
+	if err != nil {
+		return err
+	}
+	os.MkdirAll(filepath.Dir(dst), 0755)
+	return os.WriteFile(dst, b, 0644)
 }
 
 // Prepare installe tout, puis renvoie la commande de lancement.
@@ -433,7 +532,7 @@ func (g *Game) Prepare(o LaunchOptions) (*exec.Cmd, error) {
 		return nil, err
 	}
 	g.p("Lancement de Minecraft…", 1)
-	return g.command(in.van, in.fab, in.javaDir, in.cp, in.logCfg, o), nil
+	return g.command(in.van, in.neo, in.javaDir, in.cp, in.logCfg, o), nil
 }
 
 func (g *Game) command(van, fab *VersionJSON, javaDir string, cp []string, logCfg string, o LaunchOptions) *exec.Cmd {

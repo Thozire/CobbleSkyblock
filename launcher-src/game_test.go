@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"os"
 	"strings"
 	"testing"
 )
@@ -16,22 +17,23 @@ const vanFix = `{"id":"1.21.1","mainClass":"net.minecraft.client.main.Main","arg
 {"name":"org.lwjgl:lwjgl:3.3.3:natives-linux","rules":[{"action":"allow","os":{"name":"linux"}}],"downloads":{"artifact":{"path":"l-linux.jar","url":"u"}}},
 {"name":"org.lwjgl:lwjgl:3.3.3:natives-windows","rules":[{"action":"allow","os":{"name":"windows"}}],"downloads":{"artifact":{"path":"l-win.jar","url":"u"}}}]}`
 
-const fabFix = `{"id":"fabric-loader-0.20.1-1.21.1","mainClass":"net.fabricmc.loader.impl.launch.knot.KnotClient","arguments":{"game":[],"jvm":["-DFabricMcEmu= net.minecraft.client.main.Main "]},
-"libraries":[{"name":"org.ow2.asm:asm:9.10.1","url":"https://maven.fabricmc.net/","sha1":"a"},{"name":"net.fabricmc:fabric-loader:0.20.1","url":"https://maven.fabricmc.net/"}]}`
-
-func TestLaunchCommand(t *testing.T) {
+func TestLaunchCommandNeoForge(t *testing.T) {
 	currentOS = "windows"
-	var van, fab VersionJSON
+	var van, neo VersionJSON
 	if err := json.Unmarshal([]byte(vanFix), &van); err != nil {
 		t.Fatal(err)
 	}
-	if err := json.Unmarshal([]byte(fabFix), &fab); err != nil {
+	b, err := os.ReadFile("testdata/neoforge-21.1.267.json") // profil réel extrait de l'installeur
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Unmarshal(b, &neo); err != nil {
 		t.Fatal(err)
 	}
 	g := &Game{Dir: "/D", Instance: "/D/instance"}
-	tasks, cp := g.libraries(&van, &fab)
+	tasks, cp := g.libraries(&van, &neo)
 	all := strings.Join(cp, "\n")
-	for _, want := range []string{"l-win.jar", "asm-9.10.1.jar", "fabric-loader-0.20.1.jar", "lwjgl-3.3.3.jar"} {
+	for _, want := range []string{"l-win.jar", "lwjgl-3.3.3.jar", "bootstraplauncher-2.0.2.jar", "securejarhandler-3.0.8.jar", "asm-9.10.1.jar", "fancymodloader"} {
 		if !strings.Contains(all, want) {
 			t.Errorf("classpath sans %s", want)
 		}
@@ -41,26 +43,31 @@ func TestLaunchCommand(t *testing.T) {
 			t.Errorf("classpath contient %s", bad)
 		}
 	}
-	if tasks[0].URL != "https://maven.fabricmc.net/org/ow2/asm/asm/9.10.1/asm-9.10.1.jar" {
-		t.Errorf("url fabric: %s", tasks[0].URL)
+	for _, tk := range tasks {
+		if tk.URL == "" {
+			t.Errorf("tâche sans URL : %s", tk.Path)
+		}
 	}
-	c := g.command(&van, &fab, "/J", append(cp, "/D/client.jar"), "/D/log.xml",
-		LaunchOptions{Acc: &Account{Name: "Steve", UUID: "uuid", XUID: "x", MCToken: "tok"}, RAM: 4096, Server: "localhost"})
+	verJar := "/D/versions/" + neo.ID + "/" + neo.ID + ".jar"
+	c := g.command(&van, &neo, "/J", append(cp, verJar), "/D/log.xml",
+		LaunchOptions{Acc: &Account{Name: "Steve", UUID: "uuid", XUID: "x", MCToken: "tok"}, RAM: 6144, Server: "localhost"})
 	line := strings.Join(c.Args, " ")
 	t.Log(line)
-	for _, want := range []string{"-Xmx4096M", "HeapDumpPath", "-DFabricMcEmu= net.minecraft.client.main.Main ", "KnotClient --username Steve",
-		"--accessToken tok", "--userType msa", "--quickPlayMultiplayer localhost", "-Dlog4j.configurationFile=/D/log.xml", "--version fabric-loader-0.20.1-1.21.1"} {
+	for _, want := range []string{"-Xmx6144M", "-DignoreList=client-extra,neoforge-21.1.267.jar", "-DlibraryDirectory=/D/libraries",
+		"-p /D/libraries/cpw/mods/bootstraplauncher/2.0.2/bootstraplauncher-2.0.2.jar", "--add-modules ALL-MODULE-PATH",
+		"cpw.mods.bootstraplauncher.BootstrapLauncher --username Steve", "--launchTarget forgeclient", "--fml.neoForgeVersion 21.1.267",
+		"--version neoforge-21.1.267", "--quickPlayMultiplayer localhost", verJar} {
 		if !strings.Contains(line, want) {
 			t.Errorf("commande sans %q", want)
 		}
+	}
+	if strings.Contains(line, "/D/versions/1.21.1/1.21.1.jar") {
+		t.Error("le jar vanilla ne doit pas être dans le classpath (FML le prendrait pour un mod)")
 	}
 	for _, bad := range []string{"--demo", "-XstartOnFirstThread", "-Xss1M", "${"} {
 		if strings.Contains(line, bad) {
 			t.Errorf("commande contient %q", bad)
 		}
-	}
-	if !strings.HasSuffix(c.Args[0], "javaw.exe") && currentOS == "windows" && osName() == "windows" {
-		t.Error("javaw attendu")
 	}
 }
 

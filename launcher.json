@@ -1,18 +1,18 @@
 {
   "server": "92.161.33.145",
-  "serverName": "CobbleSkyblock",
-  "latestLauncher": "1.0.0",
-  "message": "",
+  "serverName": "MineColonies",
+  "latestLauncher": "2.0.0",
+  "message": "Le serveur passe sur MineColonies ! Si ton launcher affiche une mise à jour, télécharge la nouvelle version avant de jouer.",
   "news": [
     {
-      "title": "Bienvenue sur CobbleSkyblock !",
-      "text": "Le launcher est en place : les mods se mettent à jour tout seuls à chaque lancement.",
-      "date": "12/11/2026"
+      "title": "Bienvenue sur MineColonies !",
+      "text": "Nouveau monde, nouvelle aventure : posez votre bâton de fondation, recrutez des colons et construisez une ville ensemble.",
+      "date": "21/11/2026"
     },
     {
-      "title": "Machine à fusion",
-      "text": "La machine à fusion vous attend sur l'île de départ.",
-      "date": "12/11/2026"
+      "title": "Mise à jour du launcher (2.0.0)",
+      "text": "Le launcher installe maintenant NeoForge tout seul. Le premier lancement prend 1 à 2 minutes de plus.",
+      "date": "21/11/2026"
     }
   ]
 }

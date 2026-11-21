@@ -1,20 +1,41 @@
 hash-format = "sha256"
 
 [[files]]
-file = "mods/cobbleislands.pw.toml"
-hash = "2b3688ec79034dd5d4c26521e1f89906cdd80d1818d6993309cf4acf977173b3"
+file = "mods/blockui.pw.toml"
+hash = "643c88ee26ec68650091c395c5c4fbd33d534a9c493e3cc05da3c793cc7ab9db"
 metafile = true
 
 [[files]]
-file = "mods/cobblemon.pw.toml"
-hash = "7b456ba44d7ffde560f6a98edb9012fe17a8e47a74ff3701ec9026c07d5b2c62"
+file = "mods/domum-ornamentum.pw.toml"
+hash = "9d93dfc367eb58ff112a7ea21959b8c8864890d0a0b5f9d825fa67dba9262471"
 metafile = true
 
 [[files]]
-file = "mods/fabric-api.pw.toml"
-hash = "1ed7a6439d9c3cd9bc8e7db6a4362eb710de0f4da90b619f883e99f5765e96c0"
+file = "mods/jade.pw.toml"
+hash = "ec5edbfa0d746a80dfc864b53a6ce5ba6ce3c233a6f0d0aeedba5cd57099ffd3"
 metafile = true
 
 [[files]]
-file = "resourcepacks/FusionMachinePack.zip"
-hash = "7f5da79bb036546d04af8f9c2d8bcb8f2c35e3c6aba4c2609d37618628fae753"
+file = "mods/jei.pw.toml"
+hash = "562a1db3fe017c48323a0a384d21103d006ce3f599b2fbfbf96c643cefc6f9ac"
+metafile = true
+
+[[files]]
+file = "mods/mezzconfig.pw.toml"
+hash = "b22ae35ed5d2958dd12aecfefb427ed7275dcafc2ec02483dea6399a82e9b9c9"
+metafile = true
+
+[[files]]
+file = "mods/minecolonies.pw.toml"
+hash = "17349f449c2aab2a2b83cc0e471ab6002b039e2db56262274b4e0869d576b6e0"
+metafile = true
+
+[[files]]
+file = "mods/multi-piston.pw.toml"
+hash = "bc9449306cb2c32f16347779291d68e5fba67f85d7aca04b4b9cc1c033ec4083"
+metafile = true
+
+[[files]]
+file = "mods/structurize.pw.toml"
+hash = "c6ad34bdaea0616bc1ee3040b455e934233945accc9bba3c4ba28d5197376f0c"
+metafile = true
